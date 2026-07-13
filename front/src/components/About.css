@@ -1,0 +1,137 @@
+.work-section-wrapper {
+  margin-top: 15rem;
+}
+
+.work-section-top p {
+ 
+  width: 80%;
+  background-color: white;
+  box-shadow: green;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 128, 0, 0.2);
+  float: left;
+}
+.primary-heading{
+  
+  background-color: goldenrod;
+  width: 90%;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 128, 0, 0.2);
+}
+.adress {
+  width: 35%;
+  background-color: white;
+  box-shadow: green;
+  padding: 10px;
+  box-shadow: 0 2px 4px rgba(0, 128, 0, 0.2);
+  float: left;
+  margin: 10px;
+  display: block;
+  transition: transform 0.3s ease; /* Add transition for transform */
+  border-radius: 20px;
+  text-align: center; /* Center align text */
+}
+
+.adress h3 {
+  white-space: nowrap; /* Prevent line breaks */
+  overflow: hidden; /* Hide overflow text */
+  text-overflow: ellipsis; /* Show ellipsis for overflow text */
+}
+
+.cards {
+  margin-left: 4%;
+  margin-right: 2%;
+  display: flex;
+  flex-wrap: wrap; /* Enable wrapping */
+  justify-content: center; /* Center align items horizontally */
+  align-items: center; /* Center align items vertically */
+}
+
+.work-section-top h1 {
+  max-width: 70%;
+}
+
+.cards h3 {
+padding: 10px;
+}
+
+
+.adress:hover {
+  transform: translateY(-19px); /* Slide up by 5px on hover */
+  background-color: green;
+}
+
+.image-logo:hover{
+  transform: translateY(-19px); /* Slide up by 5px on hover */
+  background-color: green;
+
+}
+
+
+
+
+
+.work-section-top h1 {
+  max-width: 70% ;
+}
+
+.work-section-top {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.testimonial-section-bottom {
+  margin-top: 2rem;
+  background-color: white;
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 750px;
+  border-radius: 2rem;
+  flex-direction: column;
+  text-align: center;
+}
+
+.testimonial-section-bottom {
+  margin: 2rem auto;
+  max-width: 600px !important;
+  background-color: white;
+  box-shadow: green;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(9, 128, 6, 0.2);
+}
+
+.testimonial-section-bottom p {
+  font-weight: 700;
+  color: #515151;
+  max-width: 500px;
+  font-size: 1.1rem;
+  margin: 2rem 0rem;
+}
+.org-and-location{
+  margin: 2rem auto;
+  max-width: 600px !important;
+  background-color: white;
+  box-shadow: green;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 128, 0, 0.2);
+}
+
+.testimonials-stars-container svg {
+  margin: 0rem 0.25rem;
+  font-size: 1.5rem;
+  color: #fe9e0d;
+}
+
+.testimonial-section-bottom h2 {
+  margin-top: 1.5rem;
+}
+ 
+@media (max-width: 768px) {
+  .adress {
+    width: 100%; /* Make it full width on smaller screens */
+  }
+}

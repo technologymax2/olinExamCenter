@@ -1,0 +1,64 @@
+.footer-div{
+display: block;
+margin-top: 20px;
+width: 100%;
+background-color: black;
+display: flex;
+flex-direction: column;
+color: aliceblue;
+padding-left: 40px;
+align-content: center;
+}
+.icons-div{
+  width: 25%;
+  float: left;
+  margin: 10px;
+padding: 10px;
+  display: block;
+  text-align: center;
+  
+}
+.projects-div{
+  width: 25%;
+  float: left;
+  margin: 20px;
+ padding: 10px;
+  display: block;
+  text-align: center;
+}
+.contact-us-div{
+  width: 25%;
+  float: left;
+  margin: 20px;
+  padding: 10px;
+ text-align: center;
+  display: block;
+}
+.copyright-div{
+
+
+  width: 25%;
+  float: left;
+  margin: 20px;
+  padding: 10px;
+  display: block;
+  text-align: center;
+}
+.title{
+  padding: 5px;
+  margin: 5px;
+  background-color: ghostwhite;
+  color: black;
+  border-radius: 1%;
+  text-align: center;
+}
+
+.icon{
+  color: white;
+  display: flex;
+  flex-direction: column;
+}
+
+.icons-div a.hover{
+  color: black;
+}

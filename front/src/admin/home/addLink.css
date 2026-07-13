@@ -1,0 +1,74 @@
+/* addLink.css */
+
+.add-link-container {
+    text-align: center;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+  
+  .add-link-heading {
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+  
+  .add-link-form {
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-bottom: 20px;
+  }
+  
+  .add-link-input-group {
+    margin-bottom: 10px;
+  }
+  
+  .add-link-label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    display: block;
+  }
+  
+  .add-link-input {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+    width: 100%;
+  }
+  
+  .add-link-button {
+    padding: 10px 20px;
+    background-color: #333;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  
+  .add-link-subheading {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+  
+  .add-link-list {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  .add-link-item {
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  .add-link-link {
+    text-decoration: none;
+    color: #333;
+    transition: color 0.3s ease;
+  }
+  
+  .add-link-link:hover {
+    color: #ff6b6b;
+  }

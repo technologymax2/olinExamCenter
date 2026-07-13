@@ -1,0 +1,54 @@
+/* Navbar.css */
+
+body, html {
+  height: 100%; /* Set height to cover the entire viewport */
+}
+
+.nav {
+  background-color: whitesmoke; /* Set the background color */
+  overflow: hidden; /* Ensure that the navbar does not overflow its container */
+  width: 230px; /* Set width for the navigation container */
+  height: 100vh; /* Set height to cover the entire height of the screen */
+  padding-top: 40px;
+  float: left; /* Float the navigation container to the left */
+  box-shadow: 0px 0px 10px black; /* Add shadow effect */
+  
+}
+.logout{
+  color: black;
+}
+
+.nav-listad {
+  list-style-type: none; /* Remove the default list styles */
+  margin: 0;
+  padding: 0;
+  height: 100%; /* Set height to cover the entire height of the screen */
+  padding: 5px;
+  margin: 5px;
+ 
+
+}
+
+.nav-itemad {
+  width: 100%; /* Set width for the navigation items */
+}
+
+.nav-link {
+  display: block; /* Display the links as block elements */
+  color:black; /* Set the text color */
+  text-decoration: none; /* Remove the underline */
+  padding: 10px 15px; /* Add padding around the links */
+  display: block;
+  border-bottom: 1px solid rgb(3, 3, 3);
+}
+
+.nav-link:hover {
+  background-color: white; /* Change the background color on hover */
+}
+
+/* Styles for screens smaller than 600px */
+@media (max-width: 600px) {
+  .nav {
+    width: 100%; /* Set full width for smaller screens */
+  }
+}

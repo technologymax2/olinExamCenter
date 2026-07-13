@@ -1,0 +1,21 @@
+
+.socialicons {
+    /* Align icons to the right */
+    margin-top: 10px;
+    margin-right: 20px;
+    /* Add padding around the icons */
+    float: left;
+  }
+  
+  .socialicons a {
+    margin-left: 10px; /* Add margin between icons */
+  }
+  
+  .social-icon {
+    color: green; /* Set icon color to green */
+  }
+  
+  .social-icon:hover {
+    color: white; /* Change icon color on hover */
+  }
+  

@@ -1,0 +1,79 @@
+/* Navbar.css */
+
+.Category_title {
+  text-align: center;
+  background-color: azure;
+  color: cadetblue;
+  padding: 5px;
+  position: fixed;
+  z-index: 1000;
+  width: 22%;
+  transition: width 0.3s ease; /* Add transition for smooth animation */
+}
+
+.navbar-btn:hover + .topnav_v,
+.topnav_v:hover {
+  display: block; /* Displaying when hovered */
+}
+
+.topnav_v {
+  background-color: black;
+  opacity: 0.9;
+  overflow: hidden;
+  width: 19%;
+  display: none; /* Initially hidden */
+  transition: all 0.5s ease; /* Smooth transition for animation */
+  margin-top: 5%;
+  height: 100%;
+  position: fixed;
+  top: 60px; /* Adjust top position based on navbar height */
+  left: 0;
+  box-shadow: 0 2px 4px rgba(0, 128, 0, 0.2); /* Add green shadow */
+  padding: 10px;
+  animation: slideInLeft 0.5s forwards;
+  z-index: 1000;
+}
+
+.topnav_v ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+
+.topnav_v li {
+  border-bottom: 3px solid white;
+}
+
+.topnav_v li a {
+  display: block;
+  color: #fff;
+  text-decoration: none;
+  padding: 12px 14px;
+}
+
+.topnav_v li a:hover {
+  background-color: white;
+  color: black;
+}
+
+.Category_cancel {
+  float: right;
+}
+
+.for-free {
+  background-color: whitesmoke;
+}
+
+.for-free li a {
+  display: block;
+  color: rgb(5, 17, 13);
+  text-decoration: none;
+  padding: 12px 14px;
+}
+
+.for-free li a:hover {
+  display: block;
+  color: rgb(5, 17, 13);
+  text-decoration: none;
+  background-color: greenyellow;
+}

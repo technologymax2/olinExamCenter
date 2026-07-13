@@ -1,0 +1,93 @@
+/* products.css */
+
+.container {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 10px;
+  border: 2px solid blueviolet;
+  border-radius: 1%;
+}
+
+.form-grouplogo{
+  margin-bottom: 10px;
+  
+}
+.imput-form {
+  margin-bottom: 20px;
+  border: 2px solid blueviolet;
+  border-radius: 1%;
+  padding: 10px;
+}
+
+.imput-form h2 {
+  font-size: 24px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.uploadbtn{
+  display: none;
+}
+
+.imput-form form {
+  display: flex;
+  flex-direction: column;
+}
+
+.imput-form .form-group {
+  margin-bottom: 10px;
+}
+
+.imput-form label {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+
+
+.display_imput {
+  margin-top: 20px;
+}
+
+.display_imput h2 {
+  font-size: 24px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.display_imput .together ul {
+  display: flex;
+  list-style-type: none;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.display_imput .data-item {
+  width: 200px;
+  margin: 10px;
+  padding: 10px;
+  border: 1px solid #ccc;
+}
+
+.display_imput .data-item .img {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.display_imput .data-item .img img {
+  max-width: 100%;
+  height: auto;
+}
+
+.display_imput .data-item div {
+  margin-bottom: 5px;
+}
+
+.display_imput .data-item button {
+  padding: 6px 12px;
+  background-color: #333;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}

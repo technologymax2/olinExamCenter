@@ -1,0 +1,221 @@
+.section-container {
+  margin: 10px;
+}
+
+.input-form-section {
+  margin: 10px;
+  border: 1px solid burlywood;
+  padding: 10px;
+}
+
+.input-form-section h2 {
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.form-group-section-imput {
+  width: 90%;
+  margin: 10px;
+  border-radius: 5px;
+}
+
+.form-group-section input[type="file"] {
+  padding: 8px; /* Adjust vertical padding for file input */
+}
+
+.form-group-section-input-price {
+  padding: 8px;
+  margin-top: 10px; /* Adjust vertical padding for file input */
+  margin-bottom: 10px;
+}
+
+.form-group-section-imput-button {
+  padding: 8px 12px;
+  margin: 5px;
+  background-color: #3535dc;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.form-group-section-imput button:hover {
+  background-color: #f1e8e9;
+}
+
+.form-group-section button:hover {
+  background-color: #0056b3;
+}
+
+.together-section-display {
+  margin: 0px;
+  padding: 5px;
+}
+
+.together-section-display ul {
+  list-style-type: none;
+  padding: 10px;
+  margin-bottom: 40px;
+}
+
+.data-item-section-display-li {
+  margin: 10px;
+  padding: 5px;
+  border: 1px solid #ccc;
+  float: left;
+  border-radius: 5px;
+  width: 27%;
+  /* height: 270px; */
+  display: flex;
+  flex-direction: column;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 128, 0, 0.2);
+  transition: transform 0.5s ease;
+  position: relative; /* Required for overlay effect */
+}
+
+
+
+/* Green overlay effect */
+.together-section-display-img:hover::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 255, 0, 0.3); /* Adjust the opacity or color as per your preference */
+}
+
+/* Add hover effect for sliding */
+.together-section-display-img:hover {
+  transform: translateY(-20px); /* Adjust the value as per your preference */
+}
+
+.data-item-section-display-li:hover {
+  transform: translateY(-20px)
+}
+
+/* Add hover effect for preview and delete buttons */
+
+
+.together-section-display img {
+  width: 100%;
+  height: 120px;
+  
+}
+
+.delete-button {
+  padding: 8px 12px;
+  margin: 5px;
+  background-color: #dc3545;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.preview-button {
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  margin-left: 5px;
+  margin-right: 5px;
+  background-color: green;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  float: left;
+}
+
+.detail-button {
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  margin-left: 5px;
+  margin-right: 5px;
+  float: right;
+  background-color:blue;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.section-price {
+  color: green;
+    float: right;
+    margin: 5px;
+    padding: 5px;
+
+}
+
+
+
+.section-name {
+  padding: 10px;
+  text-align: center;
+}
+
+.together-section-display button:hover {
+  background-color: #f1e8e9;
+}
+
+.uploadbtn-section {
+  display: none;
+}
+
+.input-form-inputs-section {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 10px;
+  border: 2px solid blueviolet;
+  border-radius: 1%;
+}
+
+.input-form-inputs-section-impu {
+  margin-bottom: 20px;
+}
+.textarea-detail{
+  width: 90%;
+  padding: 10px;
+  
+}
+
+.input-form-inputs-section-imput input[type="file"],
+.input-form-inputs-section-imput input[type="text"] {
+  padding: 10px;
+  margin-bottom: 10px;
+  width: 90%;
+  border: 3px solid bisque;
+  border-radius: 1%;
+}
+
+.addsectionTitle {
+  text-align: center;
+  background-color: green;
+  padding: 20px;
+}
+
+.section-body {
+  margin-left: 4%;
+  margin-right: 4%;
+}
+.detail-display {
+  padding: 10px;
+  background-color: whitesmoke;
+  margin: 10px; 
+  display: none;
+  width: 80%; /* Adjust the width to fit within the list item container */
+  font-size: small;
+}
+
+.hide-button{
+  color: blueviolet;
+  margin: 1px;
+}
+.search-not-found{
+  color: red;
+ 
+  
+}
+

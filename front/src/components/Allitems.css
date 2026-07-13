@@ -1,0 +1,142 @@
+/* cat.css */
+
+.section-container {
+  margin:10px ;
+  }
+  
+  .imput-form-section {
+    margin: 10px;
+   
+    border: 1px solid burlywood;
+    
+    padding: 10px;
+  }
+  
+  .imput-form-section h2 {
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  
+  
+  .form-group-section-imput {
+    width: 90%;
+    margin: 10px;
+    border-radius: 5px;
+    
+  }
+  
+  .form-group-section input[type="file"] {
+    padding: 8px; /* Adjust vertical padding for file input */
+    
+  }
+  
+  .form-group-section-imput-button {
+    padding: 8px 12px;
+    margin: 10px;
+    background-color: #3535dc;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .form-group-section-imput button:hover {
+    background-color: #f1e8e9;
+  }
+  
+  .form-group-section button:hover {
+    background-color: #0056b3;
+  }
+  
+  .together-section-display {
+    margin: 0px;
+    padding:5px;
+  }
+  
+  .together-section-display ul {
+    list-style-type: none;
+    padding: 0;
+    width: 100%;
+   
+   
+  }
+  
+  .data-item-section-display-li {
+    margin: 10px;
+    padding: 5px;
+    border: 1px solid #ccc;
+    float: left;
+    border-radius: 5px;
+    width: 27%;
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    background-color: white;
+    box-shadow: green;
+  
+    box-shadow: 0 2px 4px rgba(0, 128, 0, 0.2);
+  }
+  
+  .together-section-display  img {
+    
+    width: 100%;
+    height: 120px;
+    
+   
+  }
+  
+  .delete-button {
+    padding: 8px 12px;
+    margin: 5px;
+    background-color: #dc3545;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  .preview-button{
+    padding: 8px 12px;
+    margin: 5px;
+    background-color: green;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .together-section-display button:hover {
+    background-color: #f1e8e9;
+  }
+  
+  .uploadbtn-section{
+    display: none;
+  }
+
+  .input-form-inputs-section{
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 10px;
+    border: 2px solid blueviolet;
+    border-radius: 1%;
+  }
+  .input-form-inputs-section-impu{
+    margin-bottom: 20px;
+  }
+  .input-form-inputs-section-imput input[type="file"],
+  .input-form-inputs-section-imput input[type="text"]{
+    padding: 10px;
+    margin-bottom: 10px;
+    width: 90%;
+    border: 3px solid bisque;
+    border-radius: 1%;
+
+  }
+  .addsectionTitle{
+    text-align: center;
+    background-color: green;
+    padding: 20px;
+  }
+  .section-body{
+    margin-left: 4%;
+    margin-right: 4%;
+  }

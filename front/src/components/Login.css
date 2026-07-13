@@ -1,0 +1,88 @@
+.login-page {
+    
+    background-size: cover;
+    background-position: center;
+    height: 100vh;
+    display: flex; /* Center the child vertically */
+    /* Center the child vertically */
+    justify-content: center; /* Center the child horizontally */
+  }
+  
+  .login-form-container1 {
+    margin-top: 3%;
+    width: 27%;
+    height: 350px;
+    padding: 3%;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f7f7f7;
+   
+   
+  }
+  
+  .login-form-container1 h2 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .login-form-container1 form {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .login-form-container1 .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .login-form-container1 label {
+    font-weight: bold;
+  }
+  
+  .login-form-container1 input[type='email'],
+  .login-form-container1 input[type='password'], 
+  .login-form-container1 input[type='text']{
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 90%;
+    margin: 8px;
+  }
+  
+  .login-form-container1 .password-input {
+    position: relative;
+  }
+  
+  
+  
+  .login-form-container1 button[type='submit'] {
+    padding: 3%;
+    background-color: blue;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .create-account {
+    margin-left: 30%;
+    float: right;
+    color: brown;
+  }
+  
+  .create-account:hover {
+    color: black;
+  }
+  
+  .password-icon {
+    position: absolute;
+    top: 50%;
+    right: 5px;
+    transform: translateY(-50%);
+    cursor: pointer;
+  }
+  .have-account{
+    font-size: large;
+    float: right;
+    padding: 5px;
+    margin: 6px;
+  }
