@@ -6,7 +6,8 @@ import {
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import MessageIcon from '@mui/icons-material/Message';
-import logoTheme from '../theme';
+import logoTheme from '../theme'; // ✅ ትክክል (ከ pages ፎልደር ወጣ ብሎ src/ ስር እንዳለ ያመለክታል)
+
 import axios from 'axios';
 
 const drawerWidth = 260;
