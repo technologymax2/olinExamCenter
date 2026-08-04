@@ -2,6 +2,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config(); // የ .env ፋይል ማንበቢያ
+const studentRoutes = require('./routes/studentRoutes');
+app.use('/api/student', studentRoutes);
 
 const app = express();
 app.use(express.json());
