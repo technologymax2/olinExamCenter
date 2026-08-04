@@ -9,7 +9,8 @@ import PeopleIcon from '@mui/icons-material/People';
 import SchoolIcon from '@mui/icons-material/School';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import logoTheme from './theme';
+import logoTheme from '../theme'; // ✅ ትክክል (ከ pages ፎልደር ወጣ ብሎ src/ ስር እንዳለ ያመለክታል)
+
 import axios from 'axios';
 
 const drawerWidth = 260;
