@@ -1,55 +1,25 @@
-// server.js
-
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const multer = require('multer');
-const path = require('path');
+require('dotenv').config(); // የ .env ፋይል ማንበቢያ
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-
-// Middleware
-app.use(cors());
-app.use(express.static('uploads'));
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 
-// Connect to MongoDB
-mongoose.connect('mongodb://localhost:27017/KTS', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+// ከ MongoDB Atlas ጋር መገናኘት (ከ .env የተወሰደው URI)
+const PORT = process.env.PORT || 5000;
+const MONGO_URI = process.env.MONGO_URI;
 
-const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'MongoDB connection error:'));
-db.once('open', () => {
-  console.log('Connected to MongoDB');
-});
+mongoose.connect(MONGO_URI)
+  .then(() => console.log('MongoDB Atlas Successfully Connected!'))
+  .catch(err => console.log('Database Connection Error:', err));
 
-// Image upload configuration
-const storage = multer.diskStorage({
-  destination: './uploads/',
-  filename: function(req, file, cb) {
-    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
-  }
-});
+// የአድሚን ሮውቶችን ማስገባት
+const adminRoutes = require('./routes/adminRoutes');
+app.use('/api/admin', adminRoutes);
 
-const upload = multer({
-  storage: storage
-}).single('image')
-
-// Routes
-const authRoutes = require('./routes/auth');
-app.use(authRoutes);
-
-// Error Handling Middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
-});
-
-// Start the server
+// ሰርቨሩን ማስጀመር
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`Max Technology Server is running on port ${PORT}`);
 });
