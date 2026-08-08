@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ThemeProvider, CssBaseline, Box, Drawer, AppBar, Toolbar, Typography, 
-  List, ListItem, ListItemIcon, ListItemText, Grid, Card, CardContent, 
-  Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions 
+  List, ListItemButton, ListItemIcon, ListItemText, Grid, Card, CardContent, 
+  Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, MenuItem 
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
-import SchoolIcon from '@mui/icons-material/School';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import logoTheme from '../theme'; // ✅ ትክክል (ከ pages ፎልደር ወጣ ብሎ src/ ስር እንዳለ ያመለክታል)
+import logoTheme from '../theme'; 
 
 import axios from 'axios';
 
@@ -20,8 +19,9 @@ function AdminDashboard() {
   const [openUserModal, setOpenUserModal] = useState(false);
   const [openExamModal, setOpenExamModal] = useState(false);
 
-  // የተጠቃሚ መመዝገቢያ ፎርም ስቴት
+  // የተጠቃሚ መመዝገቢያ ፎርም ስቴት (როልን ጨምሮ)
   const [userForm, setUserForm] = useState({ name: '', email: '', role: 'student', password: '' });
+  const [excelFile, setExcelFile] = useState(null);
   
   // የፈተና መርሐ-ግብር ስቴት
   const [examForm, setExamForm] = useState({ title: '', subject: '', examDate: '', resultReleaseDate: '', duration: '' });
@@ -33,14 +33,37 @@ function AdminDashboard() {
   }, []);
 
   const handleUserSubmit = () => {
-    axios.post('http://localhost:5000/api/admin/users', userForm)
-      .then(() => { alert('ተጠቃሚው ተመዝግቧል!'); setOpenUserModal(false); })
-      .catch(err => console.error(err));
+    if (excelFile) {
+      const formData = new FormData();
+      formData.append('file', excelFile);
+
+      axios.post('http://localhost:5000/api/users/upload-excel', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+        .then(() => { 
+          alert('ተጠቃሚዎች ከኤክሴል ፋይል ተጭነው ተመዝግበዋል!'); 
+          setOpenUserModal(false); 
+          setExcelFile(null); 
+        })
+        .catch(err => console.error(err));
+    } else {
+      axios.post('http://localhost:5000/api/admin/users', userForm)
+        .then(() => { 
+          alert('ተጠቃሚው ተመዝግቧል!'); 
+          setOpenUserModal(false); 
+          setUserForm({ name: '', email: '', role: 'student', password: '' });
+        })
+        .catch(err => console.error(err));
+    }
   };
 
   const handleExamSubmit = () => {
     axios.post('http://localhost:5000/api/admin/exams', examForm)
-      .then(() => { alert('ፈተናው እና ቀናቱ ተይዘዋል!'); setOpenExamModal(false); })
+      .then(() => { 
+        alert('ፈተናው እና ቀናቱ ተይዘዋል!'); 
+        setOpenExamModal(false); 
+        setExamForm({ title: '', subject: '', examDate: '', resultReleaseDate: '', duration: '' });
+      })
       .catch(err => console.error(err));
   };
 
@@ -70,9 +93,9 @@ function AdminDashboard() {
             <Typography variant="h6" sx={{ color: '#d4af37', fontWeight: 'bold' }}>Max Admin</Typography>
           </Toolbar>
           <List>
-            <ListItem button><ListItemIcon sx={{ color: '#d4af37' }}><DashboardIcon /></ListItemIcon><ListItemText primary="ዳሽቦርድ" /></ListItem>
-            <ListItem button><ListItemIcon sx={{ color: '#d4af37' }}><PeopleIcon /></ListItemIcon><ListItemText primary="ተማሪዎች እና መምህራን" /></ListItem>
-            <ListItem button><ListItemIcon sx={{ color: '#d4af37' }}><AssessmentIcon /></ListItemIcon><ListItemText primary="የፈተና ባንክና ቀናቶች" /></ListItem>
+            <ListItemButton><ListItemIcon sx={{ color: '#d4af37' }}><DashboardIcon /></ListItemIcon><ListItemText primary="ዳሽቦርድ" /></ListItemButton>
+            <ListItemButton><ListItemIcon sx={{ color: '#d4af37' }}><PeopleIcon /></ListItemIcon><ListItemText primary="ተማሪዎች እና መምህራን" /></ListItemButton>
+            <ListItemButton><ListItemIcon sx={{ color: '#d4af37' }}><AssessmentIcon /></ListItemIcon><ListItemText primary="የፈተና ባንክና ቀናቶች" /></ListItemButton>
           </List>
         </Drawer>
 
@@ -130,16 +153,30 @@ function AdminDashboard() {
           <Dialog open={openUserModal} onClose={() => setOpenUserModal(false)}>
             <DialogTitle>አዲስ ተማሪ ወይም መምህር መዝግብ</DialogTitle>
             <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1, minWidth: '350px' }}>
-              <TextField label="ሙሉ ስም" fullWidth onChange={e => setUserForm({...userForm, name: e.target.value})} />
-              <TextField label="ኢሜል" fullWidth onChange={e => setUserForm({...userForm, email: e.target.value})} />
-              <TextField label="የሚስጥር ቁጥር (Password)" type="password" fullWidth onChange={e => setUserForm({...userForm, password: e.target.value})} />
+              <TextField label="ሙሉ ስም" fullWidth value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} />
+              <TextField label="ኢሜል" fullWidth value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} />
+              <TextField label="የሚስጥር ቁጥር (Password)" type="password" fullWidth value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} />
+              <TextField
+                select
+                label="የተጠቃሚው ሚና (Role)"
+                value={userForm.role}
+                onChange={e => setUserForm({...userForm, role: e.target.value})}
+                fullWidth
+              >
+                <MenuItem value="student">ተማሪ (Student)</MenuItem>
+                <MenuItem value="teacher">መምህር (Teacher)</MenuItem>
+                <MenuItem value="admin">አስተዳዳሪ (Admin)</MenuItem>
+              </TextField>
               
               <Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
-                የኤክሴል ፋይል ሎድ አድርግ (Excel Upload)
-                <input type="file" hidden accept=".xlsx, .xls" />
+                {excelFile ? excelFile.name : 'የኤክሴል ፋይል ሎድ አድርግ (Excel Upload)'}
+                <input 
+                  type="file" 
+                  hidden 
+                  accept=".xlsx, .xls" 
+                  onChange={e => setExcelFile(e.target.files[0])} 
+                />
               </Button>
-            </DialogContent>
-            <DialogContent>
               <Typography variant="caption" color="textSecondary">ወይም ከላይ ያሉትን ፎርሞች ሞልተው ያስገቡ።</Typography>
             </DialogContent>
             <DialogActions>
@@ -152,11 +189,11 @@ function AdminDashboard() {
           <Dialog open={openExamModal} onClose={() => setOpenExamModal(false)}>
             <DialogTitle>የፈተና መርሐ-ግብር እና የውጤት ቀን ማቀናበሪያ</DialogTitle>
             <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1, minWidth: '350px' }}>
-              <TextField label="የፈተና ርዕስ (Title)" fullWidth onChange={e => setExamForm({...examForm, title: e.target.value})} />
-              <TextField label="ትምህርት ዓይነት (Subject)" fullWidth onChange={e => setExamForm({...examForm, subject: e.target.value})} />
-              <TextField label="የፈተና የሚሰጥበት ቀን እና ሰዓት" type="datetime-local" InputLabelProps={{ shrink: true }} fullWidth onChange={e => setExamForm({...examForm, examDate: e.target.value})} />
-              <TextField label="ውጤት የሚገለጽበት ቀን" type="datetime-local" InputLabelProps={{ shrink: true }} fullWidth onChange={e => setExamForm({...examForm, resultReleaseDate: e.target.value})} />
-              <TextField label="የቆይታ ጊዜ (በደቂቃ)" type="number" fullWidth onChange={e => setExamForm({...examForm, duration: e.target.value})} />
+              <TextField label="የፈተና ርዕስ (Title)" fullWidth value={examForm.title} onChange={e => setExamForm({...examForm, title: e.target.value})} />
+              <TextField label="ትምህርት ዓይነት (Subject)" fullWidth value={examForm.subject} onChange={e => setExamForm({...examForm, subject: e.target.value})} />
+              <TextField label="የፈተና የሚሰጥበት ቀን እና ሰዓት" type="datetime-local" InputLabelProps={{ shrink: true }} fullWidth value={examForm.examDate} onChange={e => setExamForm({...examForm, examDate: e.target.value})} />
+              <TextField label="ውጤት የሚገለጽበት ቀን" type="datetime-local" InputLabelProps={{ shrink: true }} fullWidth value={examForm.resultReleaseDate} onChange={e => setExamForm({...examForm, resultReleaseDate: e.target.value})} />
+              <TextField label="የቆይታ ጊዜ (በደቂቃ)" type="number" fullWidth value={examForm.duration} onChange={e => setExamForm({...examForm, duration: e.target.value})} />
             </DialogContent>
             <DialogActions>
               <Button onClick={() => setOpenExamModal(false)}>ይቅር</Button>
