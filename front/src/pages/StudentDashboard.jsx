@@ -1,33 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-
 function StudentDashboard() {
-  const [exams, setExams] = useState([]);
   const [contents, setContents] = useState([]);
+  const [exams, setExams] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch available exams and contents/homework
-    const fetchData = async () => {
+    // Fetching contents (homework, assignments, messages) and exams from backend
+    const fetchStudentData = async () => {
       try {
-        const [examsRes, contentsRes] = await Promise.all([
-          axios.get(`${API_URL}/api/exams`),
-          axios.get(`${API_URL}/api/contents`)
+        const [contentsRes, examsRes] = await Promise.all([
+          axios.get('http://localhost:10000/api/contents'),
+          axios.get('http://localhost:10000/api/exams')
         ]);
-        setExams(examsRes.data);
         setContents(contentsRes.data);
-      } catch (error) {
-        console.error('Error fetching student dashboard data:', error);
+        setExams(examsRes.data);
+      } catch (err) {
+        console.error('Error fetching student data:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchStudentData();
   }, []);
+
+  // Helper to color-code content types
+  const getBadgeColor = (type) => {
+    switch (type) {
+      case 'homework': return 'bg-blue-100 text-blue-800';
+      case 'assignment': return 'bg-purple-100 text-purple-800';
+      case 'message': return 'bg-emerald-100 text-emerald-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row text-gray-800 font-sans">
@@ -38,9 +46,9 @@ function StudentDashboard() {
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="focus:outline-none">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
           </button>
-          <span className="font-bold text-lg text-[#d4af37]">Max Student</span>
+          <span className="font-bold text-lg text-[#d4af37]">Student Portal</span>
         </div>
-        <span className="text-xs font-semibold text-amber-400">EXAM CENTER</span>
+        <span className="text-xs font-semibold text-amber-400">LEARNING CENTER</span>
       </header>
 
       {/* Sidebar */}
@@ -50,13 +58,21 @@ function StudentDashboard() {
       `}>
         <div>
           <div className="p-6 hidden md:block">
-            <h1 className="text-xl font-extrabold text-[#d4af37]">Max Student</h1>
-            <p className="text-xs text-gray-300 mt-1">Student Portal</p>
+            <h1 className="text-xl font-extrabold text-[#d4af37]">Student Panel</h1>
+            <p className="text-xs text-gray-300 mt-1">Max Technology</p>
           </div>
           <nav className="mt-6 md:mt-2 px-4 space-y-2">
             <a href="#dashboard" className="flex items-center space-x-3 p-3 rounded-lg bg-blue-900/50 text-[#d4af37] font-medium transition">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
               <span>ዳሽቦርድ</span>
+            </a>
+            <a href="#homework" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-blue-900/30 text-gray-300 hover:text-white transition">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+              <span>የቤት ስራዎች</span>
+            </a>
+            <a href="#exams" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-blue-900/30 text-gray-300 hover:text-white transition">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"></path></svg>
+              <span>ፈተናዎች</span>
             </a>
           </nav>
         </div>
@@ -73,62 +89,83 @@ function StudentDashboard() {
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         <header className="hidden md:flex items-center justify-between bg-white border-b border-gray-200 px-8 py-4 shadow-sm sticky top-0 z-20">
           <h2 className="text-xl font-bold text-[#123758]">Max Technology - Student Portal</h2>
-          <span className="text-sm font-semibold tracking-wide text-amber-600">EXAM & ASSIGNMENT CENTER</span>
+          <span className="text-sm font-semibold tracking-wide text-amber-600">EMPOWERING YOUR REACH</span>
         </header>
 
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
-          <h3 className="text-2xl sm:text-3xl font-extrabold text-[#123758]">
-            የተማሪ ዳሽቦርድ
-          </h3>
+          <div>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-[#123758]">
+              እንኳን ደህና መጡ, ተማሪ!
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              መምህራን ያስቀመጧቸውን የቤት ስራዎች፣ አሳይንመንቶች እና የሚገኙ ፈተናዎችን ከዚህ በታች መከታተል ይችላሉ።
+            </p>
+          </div>
 
           {loading ? (
-            <p className="text-gray-500">መረጃ በመጫን ላይ...</p>
+            <p className="text-gray-500 mt-4">መረጃዎችን በመጫን ላይ...</p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               
-              {/* Exams Section */}
+              {/* Contents Section (Homework, Assignments, Messages) */}
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
-                <h4 className="text-lg font-bold text-[#123758] flex items-center justify-between">
-                  <span>የሚገኙ ፈተናዎች</span>
-                  <span className="text-xs bg-blue-50 text-[#123758] px-2.5 py-1 rounded-full">{exams.length} ፈተናዎች</span>
-                </h4>
-                
-                {exams.length === 0 ? (
-                  <p className="text-sm text-gray-500">ገና የተዘጋጀ ፈተና የለም።</p>
+                <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+                  <h4 className="text-lg font-bold text-[#123758]">
+                    የቤት ስራዎች እና መልዕክቶች
+                  </h4>
+                  <span className="text-xs bg-blue-50 text-[#123758] px-2.5 py-1 rounded-full font-semibold">
+                    {contents.length} መረጃዎች
+                  </span>
+                </div>
+
+                {contents.length === 0 ? (
+                  <p className="text-sm text-gray-500">ምንም የተለቀቀ መረጃ የለም።</p>
                 ) : (
                   <div className="space-y-3">
-                    {exams.map((exam, index) => (
-                      <div key={index} className="p-4 border border-gray-100 rounded-lg bg-gray-50/50 hover:bg-gray-50 transition space-y-1">
+                    {contents.map((item, index) => (
+                      <div key={index} className="p-4 border border-gray-100 rounded-lg bg-gray-50/50 hover:bg-gray-50 transition space-y-2">
                         <div className="flex justify-between items-start">
-                          <h5 className="font-bold text-[#123758]">{exam.title}</h5>
-                          <span className="text-xs font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded">{exam.subject}</span>
+                          <h5 className="font-bold text-[#123758]">{item.title}</h5>
+                          <span className={`text-xs font-semibold px-2.5 py-0.5 rounded uppercase ${getBadgeColor(item.type)}`}>
+                            {item.type}
+                          </span>
                         </div>
-                        <p className="text-xs text-gray-500">የፈተና ቀን: {new Date(exam.examDate).toLocaleString()}</p>
-                        <p className="text-xs text-gray-500">የቆይታ ጊዜ: {exam.duration} ደቂቃ</p>
+                        <p className="text-sm text-gray-600">{item.description}</p>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Contents / Homework / Messages Section */}
+              {/* Exams Section */}
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
-                <h4 className="text-lg font-bold text-[#123758] flex items-center justify-between">
-                  <span>गृहስራ እና መልዕክቶች</span>
-                  <span className="text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full">{contents.length} መረጃዎች</span>
-                </h4>
+                <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+                  <h4 className="text-lg font-bold text-[#123758]">
+                    የሚገኙ ፈተናዎች
+                  </h4>
+                  <span className="text-xs bg-amber-50 text-amber-800 px-2.5 py-1 rounded-full font-semibold">
+                    {exams.length} ፈተናዎች
+                  </span>
+                </div>
 
-                {contents.length === 0 ? (
-                  <p className="text-sm text-gray-500">ምንም የተለቀቀ መረጃ የለም።</p>
+                {exams.length === 0 ? (
+                  <p className="text-sm text-gray-500">ገና የተዘጋጀ ፈተና የለም።</p>
                 ) : (
                   <div className="space-y-3">
-                    {contents.map((content, index) => (
-                      <div key={index} className="p-4 border border-gray-100 rounded-lg bg-gray-50/50 hover:bg-gray-50 transition space-y-1">
+                    {exams.map((exam, index) => (
+                      <div key={index} className="p-4 border border-gray-100 rounded-lg bg-gray-50/50 hover:bg-gray-50 transition space-y-2">
                         <div className="flex justify-between items-start">
-                          <h5 className="font-bold text-[#123758]">{content.title}</h5>
-                          <span className="text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded">{content.type || 'Notice'}</span>
+                          <h5 className="font-bold text-[#123758]">{exam.title}</h5>
+                          <span className="text-xs font-semibold bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded">
+                            {exam.subject || 'ፈተና'}
+                          </span>
                         </div>
-                        <p className="text-sm text-gray-600 mt-1">{content.description}</p>
+                        <p className="text-xs text-gray-600">
+                          የፈተና ቀን: {exam.examDate ? new Date(exam.examDate).toLocaleString() : 'ጊዜው አልተወሰነም'}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          የቆይታ ጊዜ: {exam.duration || 'ምንም'} ደቂቃ
+                        </p>
                       </div>
                     ))}
                   </div>
