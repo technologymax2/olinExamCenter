@@ -18,19 +18,8 @@ mongoose.connect(MONGO_URI)
   .catch(err => console.log('Database Connection Error:', err));
 
 // --- ሮውቶችን (Routes) ማገናኘት ---
-
-// 1. የአድሚን ሮውቶች (ተማሪ/መምህር መመዝገቢያ፣ ስታቲስቲክስ እና የፈተና መርሐ-ግብር)
-const adminRoutes = require('./routes/adminRoutes');
-app.use('/api/admin', adminRoutes);
-
-// 2. የተማሪ ሮውቶች (ፈተናዎች፣ የቤት ስራዎች እና መልዕክቶች ማያ)
-const studentRoutes = require('./routes/studentRoutes');
-app.use('/api/student', studentRoutes);
-
-// 3. የመምህር ሮውቶች (የቤት ስራ እና መልዕክቶች መለቀቂያ)
-// (ማስታወሻ: የ teacherRoutes ፋይል ከፈጠሩ እዚህ ጋር ማገናኘት ይችላሉ)
-const teacherRoutes = require('./routes/teacherRoutes');
-app.use('/api/teacher', teacherRoutes);
+const mainRoutes = require('./routes');
+app.use('/api', mainRoutes);
 
 // ሰርቨሩን ማስጀመር
 app.listen(PORT, () => {
