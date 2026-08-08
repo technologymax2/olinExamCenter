@@ -5,8 +5,8 @@ function TeacherDashboard() {
   const [openModal, setOpenModal] = useState(false);
   const [contentForm, setContentForm] = useState({ title: '', description: '', type: 'homework' });
 
-  const handleSubmit = () => {
-    axios.post('http://localhost:10000/api/teacher/contents', contentForm)
+const handleSubmit = () => {
+    axios.post('http://localhost:10000/api/contents', contentForm)
       .then(() => {
         alert('ተለቋል!');
         setOpenModal(false);
