@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 function AdminDashboard() {
   const [stats, setStats] = useState({ totalStudents: 0, totalTeachers: 0, totalExams: 0 });
   const [openUserModal, setOpenUserModal] = useState(false);
@@ -12,7 +14,7 @@ function AdminDashboard() {
   const [examForm, setExamForm] = useState({ title: '', subject: '', examDate: '', resultReleaseDate: '', duration: '' });
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/admin/stats')
+    axios.get(`${API_URL}/api/admin/stats`)
       .then(response => setStats(response.data))
       .catch(error => console.error('Error fetching stats:', error));
   }, []);
@@ -22,7 +24,7 @@ function AdminDashboard() {
       const formData = new FormData();
       formData.append('file', excelFile);
 
-      axios.post('http://localhost:5000/api/users/upload-excel', formData, {
+      axios.post(`${API_URL}/api/users/upload-excel`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
         .then(() => { 
@@ -32,7 +34,7 @@ function AdminDashboard() {
         })
         .catch(err => console.error(err));
     } else {
-      axios.post('http://localhost:5000/api/admin/users', userForm)
+      axios.post(`${API_URL}/api/admin/users`, userForm)
         .then(() => { 
           alert('ተጠቃሚው ተመዝግቧል!'); 
           setOpenUserModal(false); 
@@ -43,7 +45,7 @@ function AdminDashboard() {
   };
 
   const handleExamSubmit = () => {
-    axios.post('http://localhost:5000/api/admin/exams', examForm)
+    axios.post(`${API_URL}/api/admin/exams`, examForm)
       .then(() => { 
         alert('ፈተናው እና ቀናቱ ተይዘዋል!'); 
         setOpenExamModal(false); 
