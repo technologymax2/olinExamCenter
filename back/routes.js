@@ -7,10 +7,8 @@ const multer = require('multer');
 // Configure multer for file upload handling (temporary storage)
 const upload = multer({ dest: 'uploads/' });
 
-// Models
-const User = require('../models/User');
-const Exam = require('../models/Exam');
-const Content = require('../models/Content');
+// Models (Imported using destructuring)
+const { User, Exam, Content } = require('./models');
 
 // ==========================================
 // USER ROUTES
