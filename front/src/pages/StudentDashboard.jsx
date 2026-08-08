@@ -11,9 +11,9 @@ function StudentDashboard() {
     // Fetching contents (homework, assignments, messages) and exams from backend
     const fetchStudentData = async () => {
       try {
-        const [contentsRes, examsRes] = await Promise.all([
-          axios.get('http://localhost:10000/api/contents'),
-          axios.get('http://localhost:10000/api/exams')
+       const [contentsRes, examsRes] = await Promise.all([
+          axios.get('https://olinexamcenter.onrender.com/api/contents'),
+          axios.get('https://olinexamcenter.onrender.com/api/exams')
         ]);
         setContents(contentsRes.data);
         setExams(examsRes.data);
