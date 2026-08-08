@@ -94,3 +94,61 @@ router.post('/contents', async (req, res) => {
 });
 
 module.exports = router;
+// ==========================================
+// ADMIN STATS & MANAGEMENT ROUTES
+// ==========================================
+
+// Get admin stats (total students, teachers, exams)
+router.get('/admin/stats', async (req, res) => {
+    try {
+        const totalStudents = await User.countDocuments({ role: 'student' });
+        const totalTeachers = await User.countDocuments({ role: 'teacher' });
+        const totalExams = await Exam.countDocuments();
+        
+        res.status(200).json({ totalStudents, totalTeachers, totalExams });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Register a single user (Student, Teacher, or Admin)
+router.post('/admin/users', async (req, res) => {
+    try {
+        const { name, email, password, role } = req.body;
+        
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password || '123456', salt);
+
+        const newUser = new User({
+            name,
+            email,
+            password: hashedPassword,
+            role: role || 'student'
+        });
+
+        await newUser.save();
+        res.status(201).json({ message: 'ተጠቃሚው ተመዝግቧል!' });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// Create/Schedule an exam
+router.post('/admin/exams', async (req, res) => {
+    try {
+        const { title, subject, examDate, resultReleaseDate, duration } = req.body;
+
+        const newExam = new Exam({
+            title,
+            subject,
+            examDate,
+            resultReleaseDate,
+            duration
+        });
+
+        await newExam.save();
+        res.status(201).json({ message: 'ፈተናው እና ቀናቱ ተይዘዋል!' });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
