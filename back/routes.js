@@ -93,7 +93,6 @@ router.post('/contents', async (req, res) => {
     }
 });
 
-module.exports = router;
 // ==========================================
 // ADMIN STATS & MANAGEMENT ROUTES
 // ==========================================
@@ -152,3 +151,6 @@ router.post('/admin/exams', async (req, res) => {
         res.status(400).json({ error: err.message });
     }
 });
+
+// ሁልጊዜ ማስተላለፊያው (module.exports) ከፋይሉ መጨረሻ ላይ መሆን አለበት
+module.exports = router;
