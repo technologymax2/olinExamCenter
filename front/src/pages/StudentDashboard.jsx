@@ -8,10 +8,10 @@ function StudentDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetching contents (homework, assignments, messages) and exams from backend
+    // Fetching contents and exams from live backend server
     const fetchStudentData = async () => {
       try {
-       const [contentsRes, examsRes] = await Promise.all([
+        const [contentsRes, examsRes] = await Promise.all([
           axios.get('https://olinexamcenter.onrender.com/api/contents'),
           axios.get('https://olinexamcenter.onrender.com/api/exams')
         ]);
