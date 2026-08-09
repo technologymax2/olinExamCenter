@@ -184,5 +184,41 @@ router.post('/login', async (req, res) => {
     }
 });
 
+
+// ==========================================
+// TEMPORARY REGISTER ROUTE (ለአድሚን መመዝገቢያ)
+// ==========================================
+router.post('/register-admin', async (req, res) => {
+    try {
+        const { name, email, password, secretKey } = req.body;
+        
+        // ደህንነትን ለመጠበቅ ሚስጥራዊ ቁጥር መጠቀም (ማንኛውም ሰው እንዳይመዘገብ)
+        if (secretKey !== 'MaxTech2026Secure!') {
+            return res.status(403).json({ error: 'ሚስጥራዊ ቁጥሩ ስህተት ነው!' });
+        }
+
+        // ዩዘሩ ቀድሞ መኖሩን ማረጋገጥ
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ error: 'ይህ ኢሜይል ቀድሞ ተመዝግቧል!' });
+        }
+
+        // ፓስወርዱን ማቀናበር (Hashing)
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // አዲሱን አድሚን መፍጠር
+        const newAdmin = new User({
+            name,
+            email,
+            password: hashedPassword,
+            role: 'admin' // ሮሉን አድሚን እናደርገዋለን
+        });
+
+        await newAdmin.save();
+        res.status(201).json({ message: 'አድሚኑ በተሳካ ሁኔታ ተፈጥሯል!' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 // ሁልጊዜ ማስተላለፊያው (module.exports) ከፋይሉ መጨረሻ ላይ መሆን አለበት
 module.exports = router;
