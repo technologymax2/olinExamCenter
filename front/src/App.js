@@ -1,11 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 
 // የ ዳሽቦርድ እና የመግቢያ ገጾች
 import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import Login from './pages/Login';
+
+// 1. ጥበቃ የሚያደርግ ኮምፖነንት (Protected Route Component)
+// ተጠቃሚው ሎጊን ካላደረገ ወደ /login ገጽ ይመልሰዋል
+function ProtectedRoute({ children, allowedRole }) {
+  const token = localStorage.getItem('token');
+  const userRole = localStorage.getItem('userRole');
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRole && userRole !== allowedRole) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}
 
 function Home() {
   return (
@@ -24,12 +41,6 @@ function Home() {
           >
             ወደ መለያዎ ይግቡ
           </Link>
-          <Link 
-            to="/student" 
-            className="w-full sm:w-auto border-2 border-[#123758] text-[#123758] hover:bg-blue-50 font-medium px-6 py-3 rounded-xl transition text-center"
-          >
-            የተማሪ ፖርታል
-          </Link>
         </div>
       </div>
     </div>
@@ -39,23 +50,29 @@ function Home() {
 function NavigationBar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState('');
 
-  // ተጠቃሚው መግባቱን ለማረጋገጥ (Token መኖር አለመኖሩን ማየት)
+  // ቶከኑን እና ሮሉን በመፈተሽ ሁኔታውን ማስተካከል
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      setIsLoggedIn(true);
-    } else {
-      setIsLoggedIn(false);
-    }
+    const checkAuth = () => {
+      const token = localStorage.getItem('token');
+      const role = localStorage.getItem('userRole');
+      setIsLoggedIn(!!token);
+      setUserRole(role || '');
+    };
+
+    checkAuth();
+    window.addEventListener('storage', checkAuth);
+    return () => window.removeEventListener('storage', checkAuth);
   }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
     setIsLoggedIn(false);
+    setUserRole('');
     alert('ከአካውንቱ በተሳካ ሁኔታ ወጥተዋል!');
-    window.location.href = '/';
+    window.location.href = '/login';
   };
 
   return (
@@ -73,9 +90,17 @@ function NavigationBar() {
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-6">
             <Link to="/" className="hover:text-[#d4af37] font-medium transition">መነሻ</Link>
-            <Link to="/admin" className="hover:text-[#d4af37] font-medium transition">አድሚን</Link>
-            <Link to="/teacher" className="hover:text-[#d4af37] font-medium transition">መምህር</Link>
-            <Link to="/student" className="hover:text-[#d4af37] font-medium transition">ተማሪ</Link>
+            
+            {/* ዳሽቦርዶቹ የሚታዩት ተጠቃሚው ገብቶ ከሆነ ብቻ ነው */}
+            {isLoggedIn && userRole === 'admin' && (
+              <Link to="/admin" className="hover:text-[#d4af37] font-medium transition">አድሚን</Link>
+            )}
+            {isLoggedIn && userRole === 'teacher' && (
+              <Link to="/teacher" className="hover:text-[#d4af37] font-medium transition">መምህር</Link>
+            )}
+            {isLoggedIn && userRole === 'student' && (
+              <Link to="/student" className="hover:text-[#d4af37] font-medium transition">ተማሪ</Link>
+            )}
             
             {/* Conditional Login/Logout Button */}
             {isLoggedIn ? (
@@ -124,27 +149,16 @@ function NavigationBar() {
           >
             መነሻ
           </Link>
-          <Link 
-            to="/admin" 
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-900 transition"
-          >
-            አድሚን
-          </Link>
-          <Link 
-            to="/teacher" 
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-900 transition"
-          >
-            መምህር
-          </Link>
-          <Link 
-            to="/student" 
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-900 transition"
-          >
-            ተማሪ
-          </Link>
+
+          {isLoggedIn && userRole === 'admin' && (
+            <Link to="/admin" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-900 transition">አድሚን</Link>
+          )}
+          {isLoggedIn && userRole === 'teacher' && (
+            <Link to="/teacher" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-900 transition">መምህር</Link>
+          )}
+          {isLoggedIn && userRole === 'student' && (
+            <Link to="/student" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-900 transition">ተማሪ</Link>
+          )}
 
           {isLoggedIn ? (
             <button 
@@ -176,14 +190,37 @@ function App() {
         {/* Navbar Component */}
         <NavigationBar />
 
-        {/* Routes Container */}
+        {/* Routes Container with Protected Routes */}
         <main className="flex-1">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/teacher" element={<TeacherDashboard />} />
-            <Route path="/student" element={<StudentDashboard />} />
             <Route path="/login" element={<Login />} />
+            
+            {/* Protected Routes for Admin, Teacher, and Student */}
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute allowedRole="admin">
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/teacher" 
+              element={
+                <ProtectedRoute allowedRole="teacher">
+                  <TeacherDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/student" 
+              element={
+                <ProtectedRoute allowedRole="student">
+                  <StudentDashboard />
+                </ProtectedRoute>
+              } 
+            />
           </Routes>
         </main>
 
