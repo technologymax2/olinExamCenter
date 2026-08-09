@@ -256,5 +256,27 @@ router.get('/register-admin', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// ==========================================
+// ADMIN PASSWORD CHANGE ROUTE
+// ==========================================
+router.put('/admin/change-password', async (req, res) => {
+    try {
+        const { email, newPassword } = req.body;
+
+        const user = await User.findOne({ email, role: 'admin' });
+        if (!user) {
+            return res.status(404).json({ error: 'አድሚኑ አልተገኘም!' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+        await user.save();
+
+        res.status(200).json({ message: 'የአድሚኑ የይለፍ ቃል በተሳካ ሁኔታ ተቀይሯል!' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 // ሁልጊዜ ማስተላለፊያው (module.exports) ከፋይሉ መጨረሻ ላይ መሆን አለበት
 module.exports = router;
