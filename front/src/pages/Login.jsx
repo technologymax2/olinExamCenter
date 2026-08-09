@@ -18,13 +18,11 @@ function Login() {
     setLoading(true);
 
     try {
-      // ከላይቭ ሰርቨር ጋር ማገናኘት (አስፈላጊ ከሆነ ሎካልሆስት መጠቀም ይቻላል)
       const response = await axios.post('https://olinexamcenter.onrender.com/api/login', formData);
       
       const { role, name } = response.data;
       alert(`እንኳን ደህና መጡ, ${name}!`);
 
-      // እንደ ሮሉ (Role) መጠን ወደየራሱ ዳሽቦርድ መውሰድ
       if (role === 'admin') {
         navigate('/admin');
       } else if (role === 'teacher') {
@@ -107,5 +105,4 @@ function Login() {
   );
 }
 
-
-
+export default Login;
