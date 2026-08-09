@@ -152,5 +152,37 @@ router.post('/admin/exams', async (req, res) => {
     }
 });
 
+
+// ==========================================
+// LOGIN ROUTE
+// ==========================================
+router.post('/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        
+        // ተጠቃሚውን በኢሜይል መፈለግ
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ error: 'ኢሜይል ወይም የይለፍ ቃል ስህተት ነው!' });
+        }
+
+        // ፓስወርዱን ማመሳከር
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ error: 'ኢሜይል ወይም የይለፍ ቃል ስህተት ነው!' });
+        }
+
+        // እንደ ሮላቸው (Role) መረጃ መመለስ
+        res.status(200).json({
+            message: 'በተሳካ ሁኔታ ገብተዋል!',
+            role: user.role,
+            name: user.name,
+            email: user.email
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ሁልጊዜ ማስተላለፊያው (module.exports) ከፋይሉ መጨረሻ ላይ መሆን አለበት
 module.exports = router;
