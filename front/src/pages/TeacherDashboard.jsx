@@ -8,14 +8,30 @@ function TeacherDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [contentForm, setContentForm] = useState({ title: '', description: '', type: 'homework' });
 
+  // ቶከኑን ከ localStorage ማግኘት
+  const getAuthHeader = () => {
+    const token = localStorage.getItem('token');
+    return { headers: { Authorization: `Bearer ${token}` } };
+  };
+
   const handleSubmit = () => {
-    axios.post(`${API_URL}/api/contents`, contentForm)
+    // ይዘቱን ወደ ሰርቨር ሲልክ ቶከኑን አብሮ መላክ
+    axios.post(`${API_URL}/api/contents`, contentForm, getAuthHeader())
       .then(() => {
         alert('ተለቋል!');
         setOpenModal(false);
         setContentForm({ title: '', description: '', type: 'homework' });
       })
-      .catch(err => console.error('Error posting content:', err));
+      .catch(err => {
+        console.error('Error posting content:', err);
+        if (err.response?.status === 401) {
+          // ቶከኑ ካለፈ ወይም ትክክል ካልሆነ ወደ ሎጊን ማዞር
+          localStorage.clear();
+          window.location.href = '/login';
+        } else {
+          alert('መረጃውን መጫን አልተቻለም። እባክዎ እንደገና ይሞክሩ።');
+        }
+      });
   };
 
   return (
