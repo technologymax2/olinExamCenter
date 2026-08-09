@@ -9,18 +9,29 @@ function StudentDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // ቶከኑን ከ localStorage ማግኘት
+  const getAuthHeader = () => {
+    const token = localStorage.getItem('token');
+    return { headers: { Authorization: `Bearer ${token}` } };
+  };
+
   useEffect(() => {
-    // Fetching contents and exams from live backend server
+    // Fetching contents and exams with authorization header
     const fetchStudentData = async () => {
       try {
         const [contentsRes, examsRes] = await Promise.all([
-          axios.get(`${API_URL}/api/contents`),
-          axios.get(`${API_URL}/api/exams`)
+          axios.get(`${API_URL}/api/contents`, getAuthHeader()),
+          axios.get(`${API_URL}/api/exams`, getAuthHeader())
         ]);
         setContents(contentsRes.data);
         setExams(examsRes.data);
       } catch (err) {
         console.error('Error fetching student data:', err);
+        if (err.response?.status === 401) {
+          // ቶከኑ ካለፈ ወይም ትክክል ካልሆነ ወደ ሎጊን መመለስ
+          localStorage.clear();
+          window.location.href = '/login';
+        }
       } finally {
         setLoading(false);
       }
