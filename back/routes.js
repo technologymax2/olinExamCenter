@@ -220,5 +220,41 @@ router.post('/register-admin', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+// ==========================================
+// TEMPORARY REGISTER ROUTE (በ GET የተስተካከለ)
+// ==========================================
+router.get('/register-admin', async (req, res) => {
+    try {
+        const email = 'admin@max.com';
+        const password = 'adminpassword123';
+        const name = 'ማክ ዋና አድሚን';
+
+        // አድሚኑ ቀድሞ መኖሩን ማረጋገጥ
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ error: 'ይህ አድሚን ቀድሞ ተመዝግቧል!' });
+        }
+
+        // ፓስወርዱን ማቀናበር (Hashing)
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // አዲሱን አድሚን መፍጠር
+        const newAdmin = new User({
+            name,
+            email,
+            password: hashedPassword,
+            role: 'admin'
+        });
+
+        await newAdmin.save();
+        res.status(201).json({ 
+            message: 'አድሚኑ በተሳካ ሁኔታ ተፈጥሯል!',
+            email: email,
+            password: password 
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 // ሁልጊዜ ማስተላለፊያው (module.exports) ከፋይሉ መጨረሻ ላይ መሆን አለበት
 module.exports = router;
