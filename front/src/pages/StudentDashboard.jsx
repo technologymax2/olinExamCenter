@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
+const API_URL = process.env.REACT_APP_API_URL || 'https://olinexamcenter.onrender.com';
+
 function StudentDashboard() {
   const [contents, setContents] = useState([]);
   const [exams, setExams] = useState([]);
@@ -12,8 +14,8 @@ function StudentDashboard() {
     const fetchStudentData = async () => {
       try {
         const [contentsRes, examsRes] = await Promise.all([
-          axios.get('https://olinexamcenter.onrender.com/api/contents'),
-          axios.get('https://olinexamcenter.onrender.com/api/exams')
+          axios.get(`${API_URL}/api/contents`),
+          axios.get(`${API_URL}/api/exams`)
         ]);
         setContents(contentsRes.data);
         setExams(examsRes.data);
@@ -35,6 +37,11 @@ function StudentDashboard() {
       case 'message': return 'bg-emerald-100 text-emerald-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const handleStartExam = (examId) => {
+    // እዚህጋ ወደ ፈተና መውሰጃ ገጽ ማዞር (Navigation) ወይም ሎጂክ ማስገባት ይቻላል
+    alert(`ፈተና ቁጥር ${examId} መውሰድ ጀምረዋል!`);
   };
 
   return (
@@ -153,19 +160,25 @@ function StudentDashboard() {
                 ) : (
                   <div className="space-y-3">
                     {exams.map((exam, index) => (
-                      <div key={index} className="p-4 border border-gray-100 rounded-lg bg-gray-50/50 hover:bg-gray-50 transition space-y-2">
+                      <div key={index} className="p-4 border border-gray-100 rounded-lg bg-gray-50/50 hover:bg-gray-50 transition space-y-3">
                         <div className="flex justify-between items-start">
                           <h5 className="font-bold text-[#123758]">{exam.title}</h5>
                           <span className="text-xs font-semibold bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded">
                             {exam.subject || 'ፈተና'}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600">
-                          የፈተና ቀን: {exam.examDate ? new Date(exam.examDate).toLocaleString() : 'ጊዜው አልተወሰነም'}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          የቆይታ ጊዜ: {exam.duration || 'ምንም'} ደቂቃ
-                        </p>
+                        <div className="text-xs text-gray-600 space-y-1">
+                          <p>የፈተና ቀን: {exam.examDate ? new Date(exam.examDate).toLocaleString() : 'ጊዜው አልተወሰነም'}</p>
+                          <p>የቆይታ ጊዜ: {exam.duration || 'ምንም'} ደቂቃ</p>
+                        </div>
+                        <div className="flex justify-end pt-2">
+                          <button 
+                            onClick={() => handleStartExam(exam._id || index)}
+                            className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow transition"
+                          >
+                            ፈተና ጀምር (Start Exam)
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
