@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 
-// የ ዳሽቦርድ ገጾች (አስቀድመው የፈጠርናቸው)
+// የ ዳሽቦርድ እና የመግቢያ ገጾች
 import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
@@ -19,16 +19,10 @@ function Home() {
         </p>
         <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-4">
           <Link 
-            to="/admin" 
+            to="/login" 
             className="w-full sm:w-auto bg-[#123758] hover:bg-blue-900 text-white font-medium px-6 py-3 rounded-xl transition shadow-sm text-center"
           >
-            የአድሚን ፖርታል
-          </Link>
-          <Link 
-            to="/teacher" 
-            className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-medium px-6 py-3 rounded-xl transition shadow-sm text-center"
-          >
-            የመምህር ፖርታል
+            ወደ መለያዎ ይግቡ
           </Link>
           <Link 
             to="/student" 
@@ -67,6 +61,7 @@ function App() {
                 <Link to="/admin" className="hover:text-[#d4af37] font-medium transition">አድሚን</Link>
                 <Link to="/teacher" className="hover:text-[#d4af37] font-medium transition">መምህር</Link>
                 <Link to="/student" className="hover:text-[#d4af37] font-medium transition">ተማሪ</Link>
+                <Link to="/login" className="bg-[#d4af37] text-[#123758] px-4 py-2 rounded-lg font-bold hover:bg-amber-400 transition">ግባ</Link>
               </div>
 
               {/* Mobile Menu Button */}
@@ -119,6 +114,13 @@ function App() {
               >
                 ተማሪ
               </Link>
+              <Link 
+                to="/login" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 rounded-md text-base font-medium bg-[#d4af37] text-[#123758] font-bold text-center transition"
+              >
+                ግባ
+              </Link>
             </div>
           )}
         </nav>
@@ -130,7 +132,7 @@ function App() {
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/student" element={<StudentDashboard />} />
-          <Route element="{<Login" path="/login"/>} />
+            <Route path="/login" element={<Login />} />
           </Routes>
         </main>
 
