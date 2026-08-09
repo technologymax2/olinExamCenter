@@ -107,8 +107,5 @@ function Login() {
   );
 }
 
-### 3. በ `App.js` ውስጥ ራውቱን ማካተት
-በመጨረሻም በ `App.js` ውስጥ የሊንክ አዝራር እና የ `/login` ራውት ጨምር፦
 
-```javascript
-<Route element="{<Login" path="/login"/>} />
+
