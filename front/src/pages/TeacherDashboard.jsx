@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
+const API_URL = process.env.REACT_APP_API_URL || 'https://olinexamcenter.onrender.com';
+
 function TeacherDashboard() {
   const [openModal, setOpenModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [contentForm, setContentForm] = useState({ title: '', description: '', type: 'homework' });
 
   const handleSubmit = () => {
-    // ዩአርኤሉ ወደ ላይቭ ሰርቨር አድራሻ ተስተካክሏል
-    axios.post('https://olinexamcenter.onrender.com/api/contents', contentForm)
+    axios.post(`${API_URL}/api/contents`, contentForm)
       .then(() => {
         alert('ተለቋል!');
         setOpenModal(false);
@@ -19,13 +21,28 @@ function TeacherDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row text-gray-800 font-sans">
       
+      {/* Mobile Header */}
+      <header className="md:hidden bg-[#123758] text-white flex items-center justify-between p-4 shadow-md sticky top-0 z-30">
+        <div className="flex items-center space-x-2">
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="focus:outline-none">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+          </button>
+          <span className="font-bold text-lg text-[#d4af37]">Teacher Portal</span>
+        </div>
+        <span className="text-xs font-semibold text-amber-400">EMPOWERING YOUR REACH</span>
+      </header>
+
       {/* Sidebar */}
-      <aside className="w-64 bg-[#123758] text-white hidden md:flex flex-col justify-between">
+      <aside className={`
+        fixed inset-y-0 left-0 z-40 w-64 bg-[#123758] text-white transform transition-transform duration-300 ease-in-out flex flex-col justify-between
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static
+      `}>
         <div>
-          <div className="p-6">
+          <div className="p-6 hidden md:block">
             <h1 className="text-xl font-extrabold text-[#d4af37]">Teacher Panel</h1>
+            <p className="text-xs text-gray-300 mt-1">Max Technology</p>
           </div>
-          <nav className="mt-2 px-4 space-y-2">
+          <nav className="mt-6 md:mt-2 px-4 space-y-2">
             <a href="#dashboard" className="flex items-center space-x-3 p-3 rounded-lg bg-blue-900/50 text-[#d4af37] font-medium transition">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
               <span>ዳሽቦርድ</span>
@@ -40,11 +57,18 @@ function TeacherDashboard() {
             </a>
           </nav>
         </div>
+        <div className="p-4 text-xs text-center text-gray-400 border-t border-blue-900">
+          Max Technology &copy; 2026
+        </div>
       </aside>
+
+      {sidebarOpen && (
+        <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/50 z-30 md:hidden" />
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        <header className="bg-white border-b border-gray-200 px-8 py-4 shadow-sm flex justify-between items-center sticky top-0 z-20">
+        <header className="hidden md:flex items-center justify-between bg-white border-b border-gray-200 px-8 py-4 shadow-sm sticky top-0 z-20">
           <h2 className="text-xl font-bold text-[#123758]">Max Technology - Teacher Portal</h2>
           <span className="text-sm font-semibold tracking-wide text-amber-600">EMPOWERING YOUR REACH</span>
         </header>
@@ -66,7 +90,7 @@ function TeacherDashboard() {
             </h4>
             <button 
               onClick={() => setOpenModal(true)}
-              className="inline-flex items-center space-x-2 bg-[#123758] hover:bg-blue-900 text-white px-4 py-2.5 rounded-lg font-medium transition shadow-sm"
+              className="inline-flex items-center space-x-2 bg-[#123758] hover:bg-blue-900 text-white px-4 py-2.5 rounded-lg font-medium transition shadow-sm text-sm sm:text-base"
             >
               <svg className="w-5 h-5 text-[#d4af37]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               <span>የቤት ስራ፣ አሳይንመንት ወይም መልዕክት ልቀቅ</span>
@@ -75,17 +99,20 @@ function TeacherDashboard() {
 
           {/* Modal for Posting Content */}
           {openModal && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
-                <h4 className="text-xl font-bold text-[#123758]">አዲስ መረጃ መጫኛ</h4>
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
+                <div className="bg-[#123758] text-white px-6 py-4 flex justify-between items-center">
+                  <h4 className="font-bold text-lg">አዲስ መረጃ መጫኛ</h4>
+                  <button onClick={() => setOpenModal(false)} className="text-gray-300 hover:text-white">✕</button>
+                </div>
                 
-                <div className="space-y-4">
+                <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1">የይዘቱ ዓይነት</label>
                     <select 
                       value={contentForm.type}
                       onChange={e => setContentForm({...contentForm, type: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123758]"
+                      className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123758] bg-white"
                     >
                       <option value="homework">የቤት ስራ (Homework)</option>
                       <option value="assignment">አሳይንመንት (Assignment)</option>
@@ -116,16 +143,16 @@ function TeacherDashboard() {
                   </div>
                 </div>
 
-                <div className="flex justify-end space-x-3 pt-2">
+                <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 border-t">
                   <button 
                     onClick={() => setOpenModal(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition"
                   >
                     ይቅር
                   </button>
                   <button 
                     onClick={handleSubmit}
-                    className="px-4 py-2 text-sm font-medium bg-[#123758] hover:bg-blue-900 text-white rounded-lg transition"
+                    className="px-5 py-2 text-sm font-medium bg-[#123758] hover:bg-blue-900 text-white rounded-lg transition shadow"
                   >
                     ለቀቅ
                   </button>
