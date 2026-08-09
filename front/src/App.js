@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
+import Login from './pages/login';
 
 function Home() {
   return (
@@ -129,6 +130,7 @@ function App() {
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/student" element={<StudentDashboard />} />
+          <Route element="{<Login" path="/login"/>} />
           </Routes>
         </main>
 
