@@ -20,18 +20,29 @@ function Login() {
     try {
       const response = await axios.post('https://olinexamcenter.onrender.com/api/login', formData);
       
-      const { role, name } = response.data;
-      alert(`እንኳን ደህና መጡ, ${name}!`);
+      // ከሰርቨር የሚመጣውን ቶከን እና ሌሎች መረጃዎች ማውጣት 
+      // (እንደ ሰርቨርዎ አወቃቀር response.data.token ወይም response.data.accessToken ሊሆን ይችላል)
+      const { token, role, name } = response.data;
 
-      if (role === 'admin') {
-        navigate('/admin');
-      } else if (role === 'teacher') {
-        navigate('/teacher');
-      } else if (role === 'student') {
-        navigate('/student');
-      } else {
-        navigate('/');
+      // 1. ቶከኑን እና ዩዘር ሮሉን localStorage ውስጥ ማስቀመጥ (በጣም ወሳኙ ክፍል!)
+      if (token) {
+        localStorage.setItem('token', token);
+        localStorage.setItem('userRole', role);
       }
+
+      alert(`እንኳን ደህና መጡ, ${name || 'ተጠቃሚ'}!`);
+
+      // 2. በ ሚናው (Role) መሰረት ማዞር እና ፔጁን ሪፍሬሽ በማድረግ ናቭባሩ ቶከኑን እንዲያነብ ማድረግ
+      if (role === 'admin') {
+        window.location.href = '/admin';
+      } else if (role === 'teacher') {
+        window.location.href = '/teacher';
+      } else if (role === 'student') {
+        window.location.href = '/student';
+      } else {
+        window.location.href = '/';
+      }
+
     } catch (err) {
       setError(err.response?.data?.error || 'የኔትወርክ ስህተት አጋጥሟል፡፡ እባክዎ እንደገና ይሞክሩ።');
     } finally {
