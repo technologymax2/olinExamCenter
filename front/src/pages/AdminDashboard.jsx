@@ -17,10 +17,24 @@ function AdminDashboard() {
   const [passwordForm, setPasswordForm] = useState({ email: '', newPassword: '' });
   const [approvalForm, setApprovalForm] = useState({ email: '', hoursValid: 1 });
 
+  // ቶከኑን ከ localStorage ማግኘት
+  const getAuthHeader = () => {
+    const token = localStorage.getItem('token');
+    return { headers: { Authorization: `Bearer ${token}` } };
+  };
+
   useEffect(() => {
-    axios.get(`${API_URL}/api/admin/stats`)
+    // ስታቲስቲክስ መረጃዎችን ሲጠይቅ ቶከኑን አብሮ መላክ
+    axios.get(`${API_URL}/api/admin/stats`, getAuthHeader())
       .then(response => setStats(response.data))
-      .catch(error => console.error('Error fetching stats:', error));
+      .catch(error => {
+        console.error('Error fetching stats:', error);
+        if (error.response?.status === 401) {
+          // ቶከኑ ካለፈ ወይም ከሌለ ወደ ሎጊን መመለስ
+          localStorage.clear();
+          window.location.href = '/login';
+        }
+      });
   }, []);
 
   const handleUserSubmit = () => {
@@ -28,8 +42,12 @@ function AdminDashboard() {
       const formData = new FormData();
       formData.append('file', excelFile);
 
+      const token = localStorage.getItem('token');
       axios.post(`${API_URL}/api/users/upload-excel`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+        }
       })
         .then(() => { 
           alert('ተጠቃሚዎች ከኤክሴል ፋይል ተጭነው ተመዝግበዋል!'); 
@@ -38,7 +56,7 @@ function AdminDashboard() {
         })
         .catch(err => console.error(err));
     } else {
-      axios.post(`${API_URL}/api/admin/users`, userForm)
+      axios.post(`${API_URL}/api/admin/users`, userForm, getAuthHeader())
         .then(() => { 
           alert('ተጠቃሚው/አድሚኑ በተሳካ ሁኔታ ተመዝግቧል!'); 
           setOpenUserModal(false); 
@@ -49,7 +67,7 @@ function AdminDashboard() {
   };
 
   const handleExamSubmit = () => {
-    axios.post(`${API_URL}/api/admin/exams`, examForm)
+    axios.post(`${API_URL}/api/admin/exams`, examForm, getAuthHeader())
       .then(() => { 
         alert('ፈተናው እና ቀናቱ ተይዘዋል!'); 
         setOpenExamModal(false); 
@@ -59,7 +77,7 @@ function AdminDashboard() {
   };
 
   const handlePasswordSubmit = () => {
-    axios.put(`${API_URL}/api/admin/change-password`, passwordForm)
+    axios.put(`${API_URL}/api/admin/change-password`, passwordForm, getAuthHeader())
       .then(() => {
         alert('የአድሚኑ የይለፍ ቃል ተቀይሯል!');
         setOpenPasswordModal(false);
@@ -69,7 +87,7 @@ function AdminDashboard() {
   };
 
   const handleApprovalSubmit = () => {
-    axios.post(`${API_URL}/api/admin/approve-password-reset`, approvalForm)
+    axios.post(`${API_URL}/api/admin/approve-password-reset`, approvalForm, getAuthHeader())
       .then(res => {
         alert(res.data.message);
         setOpenApprovalModal(false);
