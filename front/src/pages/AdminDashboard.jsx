@@ -8,12 +8,14 @@ function AdminDashboard() {
   const [openUserModal, setOpenUserModal] = useState(false);
   const [openExamModal, setOpenExamModal] = useState(false);
   const [openPasswordModal, setOpenPasswordModal] = useState(false);
+  const [openApprovalModal, setOpenApprovalModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [userForm, setUserForm] = useState({ name: '', email: '', role: 'student', password: '' });
   const [excelFile, setExcelFile] = useState(null);
   const [examForm, setExamForm] = useState({ title: '', subject: '', examDate: '', resultReleaseDate: '', duration: '' });
   const [passwordForm, setPasswordForm] = useState({ email: '', newPassword: '' });
+  const [approvalForm, setApprovalForm] = useState({ email: '', hoursValid: 1 });
 
   useEffect(() => {
     axios.get(`${API_URL}/api/admin/stats`)
@@ -62,6 +64,16 @@ function AdminDashboard() {
         alert('የአድሚኑ የይለፍ ቃል ተቀይሯል!');
         setOpenPasswordModal(false);
         setPasswordForm({ email: '', newPassword: '' });
+      })
+      .catch(err => alert(err.response?.data?.error || 'ስህተት ተፈጥሯል'));
+  };
+
+  const handleApprovalSubmit = () => {
+    axios.post(`${API_URL}/api/admin/approve-password-reset`, approvalForm)
+      .then(res => {
+        alert(res.data.message);
+        setOpenApprovalModal(false);
+        setApprovalForm({ email: '', hoursValid: 1 });
       })
       .catch(err => alert(err.response?.data?.error || 'ስህተት ተፈጥሯል'));
   };
@@ -166,6 +178,13 @@ function AdminDashboard() {
               >
                 የአድሚን ፓስወርድ ቀይር
               </button>
+
+              <button 
+                onClick={() => setOpenApprovalModal(true)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-2.5 rounded-lg shadow transition text-sm sm:text-base"
+              >
+                የፓስወርድ ጥያቄ አጽድቅ (Approve Reset)
+              </button>
             </div>
           </div>
         </div>
@@ -226,6 +245,16 @@ function AdminDashboard() {
                   <option value="admin">አስተዳዳሪ (Admin)</option>
                 </select>
               </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">ወይም ከኤክሴል ፋይል ጫን</label>
+                <input 
+                  type="file" 
+                  accept=".xlsx, .xls"
+                  onChange={e => setExcelFile(e.target.files[0])}
+                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-[#123758] hover:file:bg-blue-100"
+                />
+              </div>
             </div>
 
             <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 border-t">
@@ -272,6 +301,48 @@ function AdminDashboard() {
             <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 border-t">
               <button onClick={() => setOpenPasswordModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg text-sm font-medium transition">ይቅር</button>
               <button onClick={handlePasswordSubmit} className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-sm font-medium transition shadow">ቀይር</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approve Password Reset Modal with Time Limit */}
+      {openApprovalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="bg-indigo-600 text-white px-6 py-4 flex justify-between items-center">
+              <h3 className="font-bold text-lg">የፓስወርድ ጥያቄ ማጽደቂያ</h3>
+              <button onClick={() => setOpenApprovalModal(false)} className="text-gray-100 hover:text-white">✕</button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">የተጠቃሚው ኢሜል</label>
+                <input 
+                  type="email" 
+                  value={approvalForm.email} 
+                  onChange={e => setApprovalForm({...approvalForm, email: e.target.value})} 
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                  placeholder="user@mail.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">የሚቆይበት የሰዓት ገደብ (Time Limit በሰዓት)</label>
+                <input 
+                  type="number" 
+                  value={approvalForm.hoursValid} 
+                  onChange={e => setApprovalForm({...approvalForm, hoursValid: e.target.value})} 
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                  placeholder="1"
+                />
+                <p className="text-xs text-gray-500 mt-1">ተጠቃሚው በዚህ ሰዓት ውስጥ አዲሱን ፓስወርድ መቀየር ይኖርበታል</p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 border-t">
+              <button onClick={() => setOpenApprovalModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg text-sm font-medium transition">ይቅር</button>
+              <button onClick={handleApprovalSubmit} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition shadow">አጽድቅ (Approve)</button>
             </div>
           </div>
         </div>
