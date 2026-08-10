@@ -81,23 +81,23 @@ function NavigationBar() {
           {/* Logo / Title */}
           <div className="flex-shrink-0 flex items-center">
             <Link to="/" className="text-base sm:text-xl font-extrabold text-[#d4af37] tracking-wider truncate">
-              Max Technology Exam System
+              Max Technology
             </Link>
           </div>
 
           {/* Navigation Links & Actions (Always visible, scrollable if screen is too small) */}
           <div className="flex items-center space-x-4 overflow-x-auto py-2 no-scrollbar">
-            <Link to="/" className="hover:text-[#d4af37] font-medium transition whitespace-nowrap">መነሻ</Link>
+            <Link to="/" className="hover:text-[#d4af37] font-medium transition whitespace-nowrap">Home</Link>
             
             {/* ዳሽቦርዶቹ የሚታዩት ተጠቃሚው ገብቶ ከሆነ ብቻ ነው */}
             {isLoggedIn && userRole === 'admin' && (
-              <Link to="/admin" className="hover:text-[#d4af37] font-medium transition whitespace-nowrap">አድሚን</Link>
+              <Link to="/admin" className="hover:text-[#d4af37] font-medium transition whitespace-nowrap">Admin</Link>
             )}
             {isLoggedIn && userRole === 'teacher' && (
-              <Link to="/teacher" className="hover:text-[#d4af37] font-medium transition whitespace-nowrap">መምህር</Link>
+              <Link to="/teacher" className="hover:text-[#d4af37] font-medium transition whitespace-nowrap">Teacher</Link>
             )}
             {isLoggedIn && userRole === 'student' && (
-              <Link to="/student" className="hover:text-[#d4af37] font-medium transition whitespace-nowrap">ተማሪ</Link>
+              <Link to="/student" className="hover:text-[#d4af37] font-medium transition whitespace-nowrap">Student</Link>
             )}
             
             {/* Conditional Login/Logout Button */}
@@ -113,7 +113,7 @@ function NavigationBar() {
                 to="/login" 
                 className="bg-[#d4af37] text-[#123758] px-3 py-1.5 rounded-lg font-bold hover:bg-amber-400 transition text-sm whitespace-nowrap"
               >
-                ግባ
+                ግባ(Login)
               </Link>
             )}
           </div>
