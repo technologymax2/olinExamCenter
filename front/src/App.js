@@ -25,7 +25,7 @@ function ProtectedRoute({ children, allowedRole }) {
 
 function Home() {
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-[80vh] bg-gray-50 flex items-center justify-center p-4">
       <div className="max-w-2xl w-full text-center space-y-6 bg-white p-8 sm:p-12 rounded-2xl shadow-sm border border-gray-100">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-[#123758] leading-tight">
           እንኳን ወደ ማክ ቴክኖሎጂ የፈተና ማዕከል በደህና መጡ
@@ -106,7 +106,7 @@ function NavigationBar() {
                 onClick={handleLogout}
                 className="bg-red-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-red-700 transition shadow text-sm whitespace-nowrap"
               >
-               Logout
+                Logout
               </button>
             ) : (
               <Link 
