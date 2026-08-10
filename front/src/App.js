@@ -106,14 +106,14 @@ function NavigationBar() {
                 onClick={handleLogout}
                 className="bg-red-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-red-700 transition shadow text-sm whitespace-nowrap"
               >
-                ውጣ (Logout)
+               Logout
               </button>
             ) : (
               <Link 
                 to="/login" 
                 className="bg-[#d4af37] text-[#123758] px-3 py-1.5 rounded-lg font-bold hover:bg-amber-400 transition text-sm whitespace-nowrap"
               >
-                ግባ(Login)
+                Login
               </Link>
             )}
           </div>
