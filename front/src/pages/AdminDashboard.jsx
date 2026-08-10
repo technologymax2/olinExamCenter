@@ -102,12 +102,12 @@ function AdminDashboard() {
       {/* Mobile Header */}
       <header className="md:hidden bg-[#123758] text-white flex items-center justify-between p-4 shadow-md sticky top-0 z-30">
         <div className="flex items-center space-x-2">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="focus:outline-none">
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="focus:outline-none p-1 rounded-lg hover:bg-blue-900 transition">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
           </button>
-          <span className="font-bold text-lg text-[#d4af37]">Max Admin</span>
+          <span className="font-bold text-base text-[#d4af37]">Max Admin</span>
         </div>
-        <span className="text-xs font-semibold text-amber-400">EMPOWERING YOUR REACH</span>
+        <span className="text-[10px] font-semibold text-amber-400">EMPOWERING YOUR REACH</span>
       </header>
 
       {/* Sidebar */}
@@ -116,17 +116,54 @@ function AdminDashboard() {
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static
       `}>
         <div>
-          <div className="p-6 hidden md:block">
-            <h1 className="text-xl font-extrabold text-[#d4af37]">Max Admin</h1>
-            <p className="text-xs text-gray-300 mt-1">Exam Center Control Panel</p>
+          <div className="p-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-extrabold text-[#d4af37]">Max Admin</h1>
+              <p className="text-xs text-gray-300 mt-1">Exam Center Control Panel</p>
+            </div>
+            {/* Close button for mobile sidebar */}
+            <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-300 hover:text-white p-1">
+              ✕
+            </button>
           </div>
-          <nav className="mt-6 md:mt-2 px-4 space-y-2">
-            <a href="#dashboard" className="flex items-center space-x-3 p-3 rounded-lg bg-blue-900/50 text-[#d4af37] font-medium transition">
+
+          <nav className="mt-2 px-4 space-y-2">
+            <a href="#dashboard" onClick={() => setSidebarOpen(false)} className="flex items-center space-x-3 p-3 rounded-lg bg-blue-900/50 text-[#d4af37] font-medium transition">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
               <span>ዳሽቦርድ</span>
             </a>
+
+            {/* Additional Sidebar Navigation Options for quick access */}
+            <button 
+              onClick={() => { setOpenUserModal(true); setSidebarOpen(false); }} 
+              className="w-full text-left flex items-center space-x-3 p-3 rounded-lg hover:bg-blue-900/40 text-gray-200 font-medium transition text-sm"
+            >
+              <span>👤 ተጠቃሚ መዝግብ</span>
+            </button>
+
+            <button 
+              onClick={() => { setOpenExamModal(true); setSidebarOpen(false); }} 
+              className="w-full text-left flex items-center space-x-3 p-3 rounded-lg hover:bg-blue-900/40 text-gray-200 font-medium transition text-sm"
+            >
+              <span>📝 ፈተና መርሐ-ግብር</span>
+            </button>
+
+            <button 
+              onClick={() => { setOpenPasswordModal(true); setSidebarOpen(false); }} 
+              className="w-full text-left flex items-center space-x-3 p-3 rounded-lg hover:bg-blue-900/40 text-gray-200 font-medium transition text-sm"
+            >
+              <span>🔑 ፓስወርድ ቀይር</span>
+            </button>
+
+            <button 
+              onClick={() => { setOpenApprovalModal(true); setSidebarOpen(false); }} 
+              className="w-full text-left flex items-center space-x-3 p-3 rounded-lg hover:bg-blue-900/40 text-gray-200 font-medium transition text-sm"
+            >
+              <span>✅ ጥያቄ አጽድቅ</span>
+            </button>
           </nav>
         </div>
+
         <div className="p-4 text-xs text-center text-gray-400 border-t border-blue-900">
           Max Technology &copy; 2026
         </div>
