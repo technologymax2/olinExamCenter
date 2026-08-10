@@ -20,24 +20,28 @@ function Login() {
     try {
       const response = await axios.post('https://olinexamcenter.onrender.com/api/login', formData);
       
-      const { role, name, email } = response.data;
+      const { token, role, name, email } = response.data;
 
-      // 1. ዩዘር ሮሉን እና መሰረታዊ መረጃዎችን localStorage ውስጥ ማስቀመጥ
+      // ቶከኑን እና የተጠቃሚውን መረጃ localStorage ውስጥ ማስቀመጥ
+      localStorage.setItem('token', token);
       localStorage.setItem('userRole', role);
       localStorage.setItem('userName', name);
       localStorage.setItem('userEmail', email);
 
+      // የ Navbar ስቴት እንዲያስተካክለው storage event ማስነሳት
+      window.dispatchEvent(new Event('storage'));
+
       alert(`እንኳን ደህና መጡ, ${name || 'ተጠቃሚ'}!`);
 
-      // 2. በ ሚናው (Role) መሰረት በቀጥታ ወደየራሳቸው ዳሽቦርድ ማዞር
+      // በ ሚናው (Role) መሰረት ወደየራሳቸው ዳሽቦርድ ማዞር
       if (role === 'admin') {
-        window.location.href = '/admin';
+        navigate('/admin');
       } else if (role === 'teacher') {
-        window.location.href = '/teacher';
+        navigate('/teacher');
       } else if (role === 'student') {
-        window.location.href = '/student';
+        navigate('/student');
       } else {
-        window.location.href = '/';
+        navigate('/');
       }
 
     } catch (err) {
