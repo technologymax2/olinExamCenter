@@ -236,7 +236,7 @@ router.post('/admin/exams', async (req, res) => {
 });
 
 // ==========================================
-// LOGIN ROUTE
+// LOGIN ROUTE (Updated to return 'token')
 // ==========================================
 router.post('/login', async (req, res) => {
     try {
@@ -254,6 +254,7 @@ router.post('/login', async (req, res) => {
 
         res.status(200).json({
             message: 'በተሳካ ሁኔታ ገብተዋል!',
+            token: user._id, // Frontend የProtected Route ማረጋገጫ እንዲኖረው ቶከን ተካቷል
             role: user.role,
             name: user.name,
             email: user.email
