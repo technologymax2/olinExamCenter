@@ -75,43 +75,43 @@ function NavigationBar() {
 
   return (
     <nav className="bg-[#123758] text-white shadow-md sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center gap-2">
+      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16 items-center gap-1">
           
-          {/* Logo / Title */}
+          {/* Logo / Title (Smaller text on mobile to avoid overflow) */}
           <div className="flex-shrink-0 flex items-center">
-            <Link to="/" className="text-base sm:text-xl font-extrabold text-[#d4af37] tracking-wider truncate">
-              Max Technology
+            <Link to="/" className="text-sm sm:text-xl font-extrabold text-[#d4af37] tracking-wider">
+              Max Tech
             </Link>
           </div>
 
-          {/* Navigation Links & Actions (Always visible, scrollable if screen is too small) */}
-          <div className="flex items-center space-x-4 overflow-x-auto py-2 no-scrollbar">
-            <Link to="/" className="hover:text-[#d4af37] font-medium transition whitespace-nowrap">Home</Link>
+          {/* Navigation Links & Actions */}
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            <Link to="/" className="text-xs sm:text-sm hover:text-[#d4af37] font-medium transition whitespace-nowrap px-1">Home</Link>
             
             {/* ዳሽቦርዶቹ የሚታዩት ተጠቃሚው ገብቶ ከሆነ ብቻ ነው */}
             {isLoggedIn && userRole === 'admin' && (
-              <Link to="/admin" className="hover:text-[#d4af37] font-medium transition whitespace-nowrap">Admin</Link>
+              <Link to="/admin" className="text-xs sm:text-sm hover:text-[#d4af37] font-medium transition whitespace-nowrap px-1">Admin</Link>
             )}
             {isLoggedIn && userRole === 'teacher' && (
-              <Link to="/teacher" className="hover:text-[#d4af37] font-medium transition whitespace-nowrap">Teacher</Link>
+              <Link to="/teacher" className="text-xs sm:text-sm hover:text-[#d4af37] font-medium transition whitespace-nowrap px-1">Teacher</Link>
             )}
             {isLoggedIn && userRole === 'student' && (
-              <Link to="/student" className="hover:text-[#d4af37] font-medium transition whitespace-nowrap">Student</Link>
+              <Link to="/student" className="text-xs sm:text-sm hover:text-[#d4af37] font-medium transition whitespace-nowrap px-1">Student</Link>
             )}
             
             {/* Conditional Login/Logout Button */}
             {isLoggedIn ? (
               <button 
                 onClick={handleLogout}
-                className="bg-red-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-red-700 transition shadow text-sm whitespace-nowrap"
+                className="bg-red-600 text-white px-2.5 py-1 rounded-lg font-bold hover:bg-red-700 transition shadow text-xs sm:text-sm whitespace-nowrap"
               >
                 Logout
               </button>
             ) : (
               <Link 
                 to="/login" 
-                className="bg-[#d4af37] text-[#123758] px-3 py-1.5 rounded-lg font-bold hover:bg-amber-400 transition text-sm whitespace-nowrap"
+                className="bg-[#d4af37] text-[#123758] px-2.5 py-1 rounded-lg font-bold hover:bg-amber-400 transition text-xs sm:text-sm whitespace-nowrap"
               >
                 Login
               </Link>
