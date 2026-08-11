@@ -22,11 +22,9 @@ function StudentDashboard() {
     window.location.href = '/login';
   };
 
-
   const handleStartExam = (examId) => {
-  navigate(`/student/exam/${examId}`);
-};
-
+    navigate(`/student/exam/${examId}`);
+  };
   
   useEffect(() => {
     // Fetching contents and exams with authorization header
@@ -61,11 +59,6 @@ function StudentDashboard() {
       case 'message': return 'bg-emerald-100 text-emerald-800';
       default: return 'bg-gray-100 text-gray-800';
     }
-  };
-
-  const handleStartExam = (examId) => {
-    // እዚህጋ ወደ ፈተና መውሰጃ ገጽ ማዞር (Navigation) ወይም ሎጂክ ማስገባት ይቻላል
-    alert(`ፈተና ቁጥር ${examId} መውሰድ ጀምረዋል!`);
   };
 
   return (
