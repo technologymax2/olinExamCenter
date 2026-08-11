@@ -36,6 +36,8 @@ function Login() {
       // በ ሚናው (Role) መሰረት ወደየራሳቸው ዳሽቦርድ ማዞር
       if (role === 'admin') {
         navigate('/admin');
+      } else if (role === 'hr') {
+        navigate('/admin'); // 👈 ኤችአር (HR) ወደ አድሚን ዳሽቦርድ እንዲገባ ተደርጓል (ወይም የራሱ ገጽ ካለ መቀየር ይቻላል)
       } else if (role === 'teacher') {
         navigate('/teacher');
       } else if (role === 'student') {
