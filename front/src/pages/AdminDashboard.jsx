@@ -12,6 +12,10 @@ function AdminDashboard() {
   const [openApprovalModal, setOpenApprovalModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // New state to hold questions visible to the admin from the database
+  const [questionBankList, setQuestionBankList] = useState([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+
   const [userForm, setUserForm] = useState({ name: '', email: '', role: 'student', password: '' });
   const [excelFile, setExcelFile] = useState(null);
   
@@ -53,6 +57,7 @@ function AdminDashboard() {
     window.location.href = '/login';
   };
 
+  // Fetch stats and question bank questions on load
   useEffect(() => {
     axios.get(`${API_URL}/api/admin/stats`, getAuthHeader())
       .then(response => setStats(response.data))
@@ -63,7 +68,17 @@ function AdminDashboard() {
           window.location.href = '/login';
         }
       });
+
+    fetchQuestionBank();
   }, []);
+
+  const fetchQuestionBank = () => {
+    setLoadingQuestions(true);
+    axios.get(`${API_URL}/api/admin/question-bank`, getAuthHeader())
+      .then(res => setQuestionBankList(res.data))
+      .catch(err => console.error('Error fetching question bank:', err))
+      .finally(() => setLoadingQuestions(false));
+  };
 
   const handleUserSubmit = () => {
     if (excelFile) {
@@ -96,7 +111,6 @@ function AdminDashboard() {
 
   // Helper function to parse pasted text block into structured questions array
   const parseBulkQuestions = (text) => {
-    // Basic block splitter based on question numbers (e.g., "1. ", "2. ")
     const rawBlocks = text.split(/\n(?=\d+\.\s+)/);
     const parsed = [];
 
@@ -112,7 +126,6 @@ function AdminDashboard() {
 
         let mode = 'question';
         for (let line of lines) {
-          // Strip starting number if present in first line
           if (mode === 'question') {
             const cleanedLine = line.replace(/^\d+\.\s*/, '');
             qText += (qText ? ' ' : '') + cleanedLine;
@@ -169,6 +182,7 @@ function AdminDashboard() {
           alert(`${questionsArray.length} ጥያቄዎች ወደ ፈተና ባንክ ተጭነዋል!`);
           setOpenQuestionBankModal(false);
           setBulkTextQuestions('');
+          fetchQuestionBank();
         })
         .catch(err => alert(err.response?.data?.error || 'ስህተት ተፈጥሯል'));
     } else if (bankFile) {
@@ -181,6 +195,7 @@ function AdminDashboard() {
           alert('ጥያቄዎች ከፋይሉ ወደ ፈተና ባንክ ተጭነዋል!');
           setOpenQuestionBankModal(false);
           setBankFile(null);
+          fetchQuestionBank();
         })
         .catch(err => alert(err.response?.data?.error || 'ስህተት ተፈጥሯል'));
     } else {
@@ -194,6 +209,7 @@ function AdminDashboard() {
           alert('ጥያቄው ወደ ፈተና ባንክ በተሳካ ሁኔታ ተመዝግቧል!');
           setQuestionForm({ subject: '', questionText: '', optionA: '', optionB: '', optionC: '', optionD: '', correctAnswer: 'A', explanation: '' });
           setOpenQuestionBankModal(false);
+          fetchQuestionBank();
         })
         .catch(err => alert(err.response?.data?.error || 'ስህተት ተፈጥሯል'));
     }
@@ -276,14 +292,14 @@ function AdminDashboard() {
               onClick={() => { setOpenQuestionBankModal(true); setSidebarOpen(false); }} 
               className="w-full text-left flex items-center space-x-3 p-3 rounded-lg hover:bg-blue-900/40 text-gray-200 font-medium transition text-sm"
             >
-              <span>📚 የፈተና ባንክ (Question Bank)</span>
+              <span>📚 አዲስ ጥያቄ ጨምር (Add to Question Bank)</span>
             </button>
 
             <button 
               onClick={() => { setOpenExamModal(true); setSidebarOpen(false); }} 
               className="w-full text-left flex items-center space-x-3 p-3 rounded-lg hover:bg-blue-900/40 text-gray-200 font-medium transition text-sm"
             >
-              <span>📝 የፈተና መርሐ-ግብር ማቀናበሪያ</span>
+              <span>📝 የፈተና መርሐ-ግብር ማቀናበሪያ (Schedule Exam)</span>
             </button>
 
             <button 
@@ -351,6 +367,56 @@ function AdminDashboard() {
               <p className="text-sm font-medium text-gray-500">የተዘጋጁ ፈተናዎች</p>
               <h4 className="text-3xl font-bold text-amber-600 mt-1">{stats.totalExams}</h4>
             </div>
+          </div>
+
+          {/* Admin Question Bank Preview Section */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-4">
+              <div>
+                <h4 className="text-lg font-bold text-[#123758]">📚 የፈተና ጥያቄዎች ባንክ (Question Bank Inventory)</h4>
+                <p className="text-xs text-gray-500 mt-1">በዚህ ክፍል ውስጥ በዳታቤዝ ውስጥ ያሉትን ጥያቄዎች ማየትና መቆጣጠር ይችላሉ።</p>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setOpenQuestionBankModal(true)}
+                  className="bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow transition"
+                >
+                  + አዲስ ጥያቄ ጨምር
+                </button>
+                <button 
+                  onClick={() => setOpenExamModal(true)}
+                  className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow transition"
+                >
+                  📝 ፈተና መርሐ-ግብር አውጣ (Schedule Exam)
+                </button>
+              </div>
+            </div>
+
+            {loadingQuestions ? (
+              <p className="text-sm text-gray-500 py-4">ጥያቄዎችን በመጫን ላይ...</p>
+            ) : questionBankList.length === 0 ? (
+              <p className="text-sm text-gray-500 py-4">በፈተና ባንክ ውስጥ እስካሁን ምንም ጥያቄ የለም።</p>
+            ) : (
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                {questionBankList.map((q, idx) => (
+                  <div key={q._id || idx} className="p-4 border rounded-lg bg-gray-50/50 space-y-2">
+                    <div className="flex justify-between items-start">
+                      <span className="text-xs font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded uppercase">
+                        {q.subject || 'General'}
+                      </span>
+                      <span className="text-xs text-gray-400">ጥያቄ #{idx + 1}</span>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-800">{q.questionText}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600 pt-1">
+                      <div className={`p-1.5 rounded ${q.correctAnswer === 'A' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>A) {q.optionA}</div>
+                      <div className={`p-1.5 rounded ${q.correctAnswer === 'B' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>B) {q.optionB}</div>
+                      {q.optionC && <div className={`p-1.5 rounded ${q.correctAnswer === 'C' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>C) {q.optionC}</div>}
+                      {q.optionD && <div className={`p-1.5 rounded ${q.correctAnswer === 'D' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>D) {q.optionD}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </main>
@@ -433,6 +499,204 @@ function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* 2. Exam Schedule Modal (የፈተና መርሐ-ግብር ማቀናበሪያ) */}
+      {openExamModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+            <div className="bg-amber-600 text-white px-6 py-4 flex justify-between items-center">
+              <h3 className="font-bold text-lg">📝 የፈተና መርሐ-ግብር ማቀናበሪያ</h3>
+              <button onClick={() => setOpenExamModal(false)} className="text-gray-100 hover:text-white">✕</button>
+            </div>
+            
+            <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">የፈተናው ርዕስ (Exam Title)</label>
+                <input 
+                  type="text" 
+                  value={examForm.title} 
+                  onChange={e => setExamForm({...examForm, title: e.target.value})} 
+                  className="w-full px-4 py-2 border rounded-lg" 
+                  placeholder="ምሳሌ፦ የሁለተኛ ወር ፈተና" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">ትምህርት ዓይነት (Subject)</label>
+                <input 
+                  type="text" 
+                  value={examForm.subject} 
+                  onChange={e => setExamForm({...examForm, subject: e.target.value})} 
+                  className="w-full px-4 py-2 border rounded-lg" 
+                  placeholder="ምሳሌ፦ Nutrition" 
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">የፈተና ቀን እና ሰዓት</label>
+                  <input 
+                    type="datetime-local" 
+                    value={examForm.examDate} 
+                    onChange={e => setExamForm({...examForm, examDate: e.target.value})} 
+                    className="w-full px-4 py-2 border rounded-lg text-xs" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">ውጤት የሚለቀቅበት ቀን</label>
+                  <input 
+                    type="datetime-local" 
+                    value={examForm.resultReleaseDate} 
+                    onChange={e => setExamForm({...examForm, resultReleaseDate: e.target.value})} 
+                    className="w-full px-4 py-2 border rounded-lg text-xs" 
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">የቆይታ ጊዜ (በደቃቃ)</label>
+                  <input 
+                    type="number" 
+                    value={examForm.duration} 
+                    onChange={e => setExamForm({...examForm, duration: e.target.value})} 
+                    className="w-full px-4 py-2 border rounded-lg" 
+                    placeholder="30" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">ከባንክ የሚወጡ ጥያቄዎች ብዛት</label>
+                  <input 
+                    type="number" 
+                    value={examForm.numberOfQuestions} 
+                    onChange={e => setExamForm({...examForm, numberOfQuestions: e.target.value})} 
+                    className="w-full px-4 py-2 border rounded-lg" 
+                    placeholder="10" 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">መግለጫ (Description)</label>
+                <textarea 
+                  rows="2" 
+                  value={examForm.description} 
+                  onChange={e => setExamForm({...examForm, description: e.target.value})} 
+                  className="w-full px-4 py-2 border rounded-lg" 
+                  placeholder="ለተማሪዎች የሚሰጥ ማሳሰቢያ..." 
+                />
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 border-t">
+              <button onClick={() => setOpenExamModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg text-sm font-medium">ይቅር</button>
+              <button onClick={handleExamSubmit} className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium shadow">መርሐ-ግብር አውጣ</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. User Registration Modal */}
+      {openUserModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="bg-[#123758] text-white px-6 py-4 flex justify-between items-center">
+              <h3 className="font-bold text-lg">👤 ተጠቃሚ መዝግብ</h3>
+              <button onClick={() => setOpenUserModal(false)} className="text-gray-100 hover:text-white">✕</button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">ሙሉ ስም</label>
+                <input type="text" value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} className="w-full px-4 py-2 border rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">ኢሜይል</label>
+                <input type="email" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} className="w-full px-4 py-2 border rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">ሚና (Role)</label>
+                <select value={userForm.role} onChange={e => setUserForm({...userForm, role: e.target.value})} className="w-full px-4 py-2 border rounded-lg bg-white">
+                  <option value="student">Student</option>
+                  <option value="teacher">Teacher</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">የይለፍ ቃል (Password)</label>
+                <input type="password" value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} className="w-full px-4 py-2 border rounded-lg" />
+              </div>
+
+              <div className="border-t pt-3">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">ወይም ከኤክሴል ፋይል ሎድ አድርግ (Excel)</label>
+                <input type="file" accept=".xlsx, .xls" onChange={e => setExcelFile(e.target.files[0])} className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 border-t">
+              <button onClick={() => setOpenUserModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg text-sm font-medium">ይቅር</button>
+              <button onClick={handleUserSubmit} className="px-5 py-2 bg-[#123758] hover:bg-blue-900 text-white rounded-lg text-sm font-medium shadow">ተጠቃሚ መዝግብ</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Password Change Modal */}
+      {openPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="bg-[#123758] text-white px-6 py-4 flex justify-between items-center">
+              <h3 className="font-bold text-lg">🔑 ፓስወርድ ቀይር</h3>
+              <button onClick={() => setOpenPasswordModal(false)} className="text-gray-100 hover:text-white">✕</button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">የተጠቃሚ ኢሜይል</label>
+                <input type="email" value={passwordForm.email} onChange={e => setPasswordForm({...passwordForm, email: e.target.value})} className="w-full px-4 py-2 border rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">አዲስ የይለፍ ቃል</label>
+                <input type="password" value={passwordForm.newPassword} onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})} className="w-full px-4 py-2 border rounded-lg" />
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 border-t">
+              <button onClick={() => setOpenPasswordModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg text-sm font-medium">ይቅር</button>
+              <button onClick={handlePasswordSubmit} className="px-5 py-2 bg-[#123758] hover:bg-blue-900 text-white rounded-lg text-sm font-medium shadow">ቀይር</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Approval Modal */}
+      {openApprovalModal && (
+        <div className="fixed inset-0 z-50 flex items-0 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="bg-emerald-600 text-white px-6 py-4 flex justify-between items-center">
+              <h3 className="font-bold text-lg">✅ ጥያቄ አጽድቅ</h3>
+              <button onClick={() => setOpenApprovalModal(false)} className="text-gray-100 hover:text-white">✕</button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">የተጠቃሚ ኢሜይል</label>
+                <input type="email" value={approvalForm.email} onChange={e => setApprovalForm({...approvalForm, email: e.target.value})} className="w-full px-4 py-2 border rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">የሚቆይበት ሰዓት (Hours Valid)</label>
+                <input type="number" value={approvalForm.hoursValid} onChange={e => setApprovalForm({...approvalForm, hoursValid: e.target.value})} className="w-full px-4 py-2 border rounded-lg" />
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 border-t">
+              <button onClick={() => setOpenApprovalModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg text-sm font-medium">ይቅር</button>
+              <button onClick={handleApprovalSubmit} className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium shadow">አጽድቅ</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
