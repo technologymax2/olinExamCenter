@@ -146,59 +146,86 @@ router.put('/users/reset-password-with-approval', async (req, res) => {
 });
 
 // ==========================================
-// QUESTION BANK BULK PARSE ROUTE (አዲስ የተጨመረ)
+// QUESTION BANK ROUTES (Single & Bulk Add)
 // ==========================================
-router.post('/admin/question-bank/bulk-parse', async (req, res) => {
-  try {
-    const { rawText, subject } = req.body;
-    if (!rawText || !rawText.trim()) {
-      return res.status(400).json({ error: 'እባክዎ የጥያቄ ጽሁፍ ያስገቡ' });
-    }
 
-    // 1. ማስታወቂያዎችን እና አላስፈላጊ ጽሁፎችን ማጽዳት
-    let cleanedText = rawText
-      .replace(/🎓[^\n]*/g, '')                
-      .replace(/advertisement/gi, '')           
-      .replace(/View\s*Answer/gi, '')          
-      .replace(/FoodAnswer:/gi, 'Answer:');     
-
-    // 2. ጽሁፉን በቁጥር (1., 2., 3.) መለየት
-    const blocks = cleanedText
-      .split(/(?=\n?\d+[\.\)]\s)/)
-      .filter(b => b.trim().length > 0);
-
-    const parsedQuestions = [];
-
-    for (let block of blocks) {
-      try {
-        const qMatch = block.match(/^\d+[\.\)]\s*(.*?)(?=\s*a\))/s);
-        if (!qMatch) continue;
-        const questionText = qMatch[1].trim();
-
-        const optA = block.match(/a\)\s*(.*?)(?=\s*b\))/s);
-        const optB = block.match(/b\)\s*(.*?)(?=\s*c\))/s);
-        const optC = block.match(/c\)\s*(.*?)(?=\s*d\))/s);
-        const optD = block.match(/d\)\s*(.*?)(?=\s*Answer:|\n\n|$)/s);
-
-        const ansMatch = block.match(/Answer:\s*([a-dA-D])/i);
-        const expMatch = block.match(/Explanation:\s*(.*?)(?=\n\d+[\.\)]|$)/s);
-
-        if (qMatch && optA && optB && optC && optD && ansMatch) {
-          parsedQuestions.push({
-            subject: subject || 'General',
-            questionText: questionText,
-            options: [
-              optA[1].trim(),
-              optB[1].trim(),
-              optC[1].trim(),
-              optD[1].trim()
-            ],
-            correctAnswer: ansMatch[1].toUpperCase(),
-            explanation: expMatch ? expMatch[1].trim() : ''
-          });
+// Add a single question manually
+router.post('/admin/question-bank/add', async (req, res) => {
+    try {
+        const { subject, questionText, optionA, optionB, optionC, optionD, correctAnswer, explanation } = req.body;
+        
+        if (!questionText || !optionA || !optionB) {
+            return res.status(400).json({ error: 'እባክዎ ጥያቄውን እና ቢያንስ A እና B አማራጮችን ይሙሉ!' });
         }
-      } catch (err) {
-        console.error('Parsing error on single question block:', err);
+
+        const newQuestion = new QuestionBank({
+            subject: subject || 'General',
+            questionText,
+            optionA,
+            optionB,
+            optionC,
+            optionD,
+            correctAnswer: correctAnswer || 'A',
+            explanation
+        });
+
+        await newQuestion.save();
+        res.status(201).json({ message: 'ጥያቄው ወደ ፈተና ባንክ ተመዝግቧል!' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Bulk add/parse questions from pasted text
+router.post('/admin/question-bank/bulk-add', async (req, res) => {
+  try {
+    // Supports both direct array payload or rawText payload from various handlers
+    const { questions, rawText, subject } = req.body;
+
+    let parsedQuestions = [];
+
+    if (questions && Array.isArray(questions)) {
+      parsedQuestions = questions;
+    } else if (rawText) {
+      let cleanedText = rawText
+        .replace(/🎓[^\n]*/g, '')            
+        .replace(/advertisement/gi, '')           
+        .replace(/View\s*Answer/gi, '')          
+        .replace(/FoodAnswer:/gi, 'Answer:');     
+
+      const blocks = cleanedText
+        .split(/(?=\n?\d+[\.\)]\s)/)
+        .filter(b => b.trim().length > 0);
+
+      for (let block of blocks) {
+        try {
+          const qMatch = block.match(/^\d+[\.\)]\s*(.*?)(?=\s*a\))/s);
+          if (!qMatch) continue;
+          const questionText = qMatch[1].trim();
+
+          const optA = block.match(/a\)\s*(.*?)(?=\s*b\))/s);
+          const optB = block.match(/b\)\s*(.*?)(?=\s*c\))/s);
+          const optC = block.match(/c\)\s*(.*?)(?=\s*d\))/s);
+          const optD = block.match(/d\)\s*(.*?)(?=\s*Answer:|\n\n|$)/s);
+
+          const ansMatch = block.match(/Answer:\s*([a-dA-D])/i);
+          const expMatch = block.match(/Explanation:\s*(.*?)(?=\n\d+[\.\)]|$)/s);
+
+          if (qMatch && optA && optB && optC && optD && ansMatch) {
+            parsedQuestions.push({
+              subject: subject || 'General',
+              questionText: questionText,
+              optionA: optA[1].trim(),
+              optionB: optB[1].trim(),
+              optionC: optC[1].trim(),
+              optionD: optD[1].trim(),
+              correctAnswer: ansMatch[1].toUpperCase(),
+              explanation: expMatch ? expMatch[1].trim() : ''
+            });
+          }
+        } catch (err) {
+          console.error('Parsing error on single question block:', err);
+        }
       }
     }
 
@@ -206,7 +233,6 @@ router.post('/admin/question-bank/bulk-parse', async (req, res) => {
       return res.status(400).json({ error: 'ምንም ጥያቄ መለየት አልተቻለም። እባክዎ የፅሁፉን ቅርጸት ያረጋግጡ።' });
     }
 
-    // 3. ወደ ዳታቤዝ ማስገባት
     await QuestionBank.insertMany(parsedQuestions);
 
     res.status(200).json({
