@@ -13,11 +13,21 @@ function AdminDashboard() {
 
   const [userForm, setUserForm] = useState({ name: '', email: '', role: 'student', password: '' });
   const [excelFile, setExcelFile] = useState(null);
-  const [examForm, setExamForm] = useState({ title: '', subject: '', examDate: '', resultReleaseDate: '', duration: '' });
+  
+  // የፈተና መርሐ-ግብር እና የፈተና ጥያቄዎችን ጨምሮ የተስተካከለ ፎርም
+  const [examForm, setExamForm] = useState({ 
+    title: '', 
+    subject: '', 
+    examDate: '', 
+    resultReleaseDate: '', 
+    duration: '',
+    description: '',
+    questionsFile: null 
+  });
+
   const [passwordForm, setPasswordForm] = useState({ email: '', newPassword: '' });
   const [approvalForm, setApprovalForm] = useState({ email: '', hoursValid: 1 });
 
-  // ቶከኑን ከ localStorage ማግኘት
   const getAuthHeader = () => {
     const token = localStorage.getItem('token');
     return { headers: { Authorization: `Bearer ${token}` } };
@@ -29,13 +39,11 @@ function AdminDashboard() {
   };
 
   useEffect(() => {
-    // ስታቲስቲክስ መረጃዎችን ሲጠይቅ ቶከኑን አብሮ መላክ
     axios.get(`${API_URL}/api/admin/stats`, getAuthHeader())
       .then(response => setStats(response.data))
       .catch(error => {
         console.error('Error fetching stats:', error);
         if (error.response?.status === 401) {
-          // ቶከኑ ካለፈ ወይም ከሌለ ወደ ሎጊን መመለስ
           localStorage.clear();
           window.location.href = '/login';
         }
@@ -72,13 +80,34 @@ function AdminDashboard() {
   };
 
   const handleExamSubmit = () => {
-    axios.post(`${API_URL}/api/admin/exams`, examForm, getAuthHeader())
+    const formData = new FormData();
+    formData.append('title', examForm.title);
+    formData.append('subject', examForm.subject);
+    formData.append('examDate', examForm.examDate);
+    formData.append('resultReleaseDate', examForm.resultReleaseDate);
+    formData.append('duration', examForm.duration);
+    formData.append('description', examForm.description);
+    
+    if (examForm.questionsFile) {
+      formData.append('questionsFile', examForm.questionsFile);
+    }
+
+    const token = localStorage.getItem('token');
+    axios.post(`${API_URL}/api/admin/exams`, formData, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data'
+      }
+    })
       .then(() => { 
-        alert('ፈተናው እና ቀናቱ ተይዘዋል!'); 
+        alert('ፈተናው እና መርሐ-ግብሩ በተሳካ ሁኔታ ተለጠፈ!'); 
         setOpenExamModal(false); 
-        setExamForm({ title: '', subject: '', examDate: '', resultReleaseDate: '', duration: '' });
+        setExamForm({ title: '', subject: '', examDate: '', resultReleaseDate: '', duration: '', description: '', questionsFile: null });
       })
-      .catch(err => console.error(err));
+      .catch(err => {
+        console.error(err);
+        alert(err.response?.data?.error || 'ፈተናውን በመለጠፍ ላይ ስህተት ተፈጥሯል');
+      });
   };
 
   const handlePasswordSubmit = () => {
@@ -117,7 +146,7 @@ function AdminDashboard() {
         </button>
       </header>
 
-      {/* Sidebar (Displays over the page on mobile, normal sticky on desktop) */}
+      {/* Sidebar */}
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-[#123758] text-white transform transition-transform duration-300 ease-in-out flex flex-col justify-between shadow-2xl
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:sticky md:top-0 md:h-screen
@@ -128,7 +157,6 @@ function AdminDashboard() {
               <h1 className="text-xl font-extrabold text-[#d4af37]">Max Admin</h1>
               <p className="text-xs text-gray-300 mt-1">Exam Center Control Panel</p>
             </div>
-            {/* Close button for mobile sidebar */}
             <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-300 hover:text-white text-lg font-bold">
               ✕
             </button>
@@ -151,7 +179,7 @@ function AdminDashboard() {
               onClick={() => { setOpenExamModal(true); setSidebarOpen(false); }} 
               className="w-full text-left flex items-center space-x-3 p-3 rounded-lg hover:bg-blue-900/40 text-gray-200 font-medium transition text-sm"
             >
-              <span>📝 ፈተና መርሐ-ግብር</span>
+              <span>📝 የፈተና መርሐ-ግብር እና ልጥፍ</span>
             </button>
 
             <button 
@@ -170,7 +198,6 @@ function AdminDashboard() {
           </nav>
         </div>
 
-        {/* Sidebar Footer with Logout Button */}
         <div className="p-4 border-t border-blue-900 space-y-3">
           <button 
             onClick={handleLogout}
@@ -185,7 +212,6 @@ function AdminDashboard() {
         </div>
       </aside>
 
-      {/* Backdrop overlay when sidebar is open on mobile */}
       {sidebarOpen && (
         <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden" />
       )}
@@ -241,7 +267,7 @@ function AdminDashboard() {
                 onClick={() => setOpenExamModal(true)}
                 className="bg-amber-600 hover:bg-amber-700 text-white font-medium px-5 py-2.5 rounded-lg shadow transition text-sm sm:text-base"
               >
-                ፈተና መርሐ-ግብር አውጣ
+                የፈተና መርሐ-ግብር እና ልጥፍ አውጣ
               </button>
 
               <button 
@@ -420,12 +446,12 @@ function AdminDashboard() {
         </div>
       )}
 
-      {/* Exam Scheduling Modal */}
+      {/* Exam Scheduling & Publishing Modal */}
       {openExamModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
             <div className="bg-amber-600 text-white px-6 py-4 flex justify-between items-center">
-              <h3 className="font-bold text-lg">የፈተና መርሐ-ግብር ማቀናበሪያ</h3>
+              <h3 className="font-bold text-lg">የፈተና መርሐ-ግብር እና ልጥፍ (Exam Post)</h3>
               <button onClick={() => setOpenExamModal(false)} className="text-gray-100 hover:text-white">✕</button>
             </div>
             
@@ -437,9 +463,10 @@ function AdminDashboard() {
                   value={examForm.title} 
                   onChange={e => setExamForm({...examForm, title: e.target.value})} 
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-600 focus:outline-none"
-                  placeholder="የፈተና ርዕስ"
+                  placeholder="ምሳሌ፦ የፊዚክስ አጋማሽ ፈተና"
                 />
               </div>
+
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">ትምህርት ዓይነት</label>
                 <input 
@@ -447,27 +474,31 @@ function AdminDashboard() {
                   value={examForm.subject} 
                   onChange={e => setExamForm({...examForm, subject: e.target.value})} 
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-600 focus:outline-none"
-                  placeholder="Mathematics"
+                  placeholder="ምሳሌ፦ Physics"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">የፈተና ቀን እና ሰዓት</label>
-                <input 
-                  type="datetime-local" 
-                  value={examForm.examDate} 
-                  onChange={e => setExamForm({...examForm, examDate: e.target.value})} 
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-600 focus:outline-none"
-                />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">የፈተና ቀን እና ሰዓት</label>
+                  <input 
+                    type="datetime-local" 
+                    value={examForm.examDate} 
+                    onChange={e => setExamForm({...examForm, examDate: e.target.value})} 
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-600 focus:outline-none text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">ውጤት የሚገለጽበት ቀን</label>
+                  <input 
+                    type="datetime-local" 
+                    value={examForm.resultReleaseDate} 
+                    onChange={e => setExamForm({...examForm, resultReleaseDate: e.target.value})} 
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-600 focus:outline-none text-sm"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">ውጤት የሚገለጽበት ቀን</label>
-                <input 
-                  type="datetime-local" 
-                  value={examForm.resultReleaseDate} 
-                  onChange={e => setExamForm({...examForm, resultReleaseDate: e.target.value})} 
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-600 focus:outline-none"
-                />
-              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">የቆይታ ጊዜ (በደቂቃ)</label>
                 <input 
@@ -478,11 +509,31 @@ function AdminDashboard() {
                   placeholder="60"
                 />
               </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">መግለጫ / መመሪያ (Description)</label>
+                <textarea 
+                  rows="2"
+                  value={examForm.description} 
+                  onChange={e => setExamForm({...examForm, description: e.target.value})} 
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-600 focus:outline-none"
+                  placeholder="ለተማሪዎች የሚሰጥ አጭር መመሪያ..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">የፈተና ጥያቄዎችን ጫን (Excel / JSON / Document)</label>
+                <input 
+                  type="file" 
+                  onChange={e => setExamForm({...examForm, questionsFile: e.target.files[0]})} 
+                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
+                />
+              </div>
             </div>
 
             <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 border-t">
               <button onClick={() => setOpenExamModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg text-sm font-medium transition">ይቅር</button>
-              <button onClick={handleExamSubmit} className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition shadow">መዝግብ</button>
+              <button onClick={handleExamSubmit} className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition shadow">ፈተናውን ለጥፍ (Post Exam)</button>
             </div>
           </div>
         </div>
