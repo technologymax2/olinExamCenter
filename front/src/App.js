@@ -6,6 +6,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import Login from './pages/Login';
+import TakeExam from './pages/TakeExam'; // TakeExam ኮምፖነንቱን ማስገባት
 
 // ጥበቃ የሚያደርግ ኮምፖነንት (Protected Route Component)
 function ProtectedRoute({ children, allowedRole }) {
@@ -81,7 +82,14 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-              <Route path="/student/exam/:examId" element={<TakeExam />} />
+            <Route 
+              path="/student/exam/:examId" 
+              element={
+                <ProtectedRoute allowedRole="student">
+                  <TakeExam />
+                </ProtectedRoute>
+              } 
+            />
           </Routes>
         </main>
 
