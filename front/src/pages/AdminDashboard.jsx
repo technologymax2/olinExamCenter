@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import ScheduledExamsTable from './ScheduledExamsTable';
+// AdminDashboard.js ውስጥ የሚጻፈው
+import ScheduledExamsTable from '../components/ScheduledExamsTable';
 const API_URL = process.env.REACT_APP_API_URL || 'https://olinexamcenter.onrender.com';
 
 function AdminDashboard() {
