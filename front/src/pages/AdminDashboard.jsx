@@ -250,7 +250,29 @@ function AdminDashboard() {
       })
       .catch(err => alert(err.response?.data?.error || 'ስህተት ተፈጥሯል'));
   };
+ // Delete a single question by its ID
+  const handleDeleteQuestion = (questionId) => {
+    if (!window.confirm('ይህን ጥያቄ ማጥፋት ይፈልጋሉ?')) return;
 
+    axios.delete(`${API_URL}/api/admin/question-bank/${questionId}`, getAuthHeader())
+      .then(() => {
+        alert('ጥያቄው በተሳካ ሁኔታ ተሰርዟል!');
+        fetchQuestionBank(); // Refresh the list
+      })
+      .catch(err => alert(err.response?.data?.error || 'ጥያቄውን በመሰረዝ ላይ ስህተት ተፈጥሯል'));
+  };
+
+  // Delete all questions in the question bank
+  const handleDeleteAllQuestions = () => {
+    if (!window.confirm('ማስጠንቀቂያ: ሁሉንም የፈተና ጥያቄዎች ማጥፋት ይፈልጋሉ? ይህ ድርጊት ሊመለስ አይችልም!')) return;
+
+    axios.delete(`${API_URL}/api/admin/question-bank/all`, getAuthHeader())
+      .then(() => {
+        alert('ሁሉም ጥያቄዎች ተሰርዘዋል!');
+        fetchQuestionBank(); // Refresh the list
+      })
+      .catch(err => alert(err.response?.data?.error || 'ጥያቄዎችን በመሰረዝ ላይ ስህተት ተፈጥሯል'));
+  };
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row text-gray-800 font-sans relative">
       
