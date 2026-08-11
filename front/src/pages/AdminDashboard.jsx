@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-
+import ScheduledExamsTable from './ScheduledExamsTable';
 const API_URL = process.env.REACT_APP_API_URL || 'https://olinexamcenter.onrender.com';
 
 function AdminDashboard() {
@@ -419,6 +419,12 @@ function AdminDashboard() {
             </div>
           </div>
 
+
+
+<ScheduledExamsTable />
+
+
+          
           {/* Admin Question Bank Preview Section */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-4">
