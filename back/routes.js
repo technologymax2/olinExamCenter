@@ -463,4 +463,18 @@ router.post('/exams/:id/submit', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });     
+
+// ==========================================
+// QUESTION BANK ROUTES (Fetch, Single & Bulk Add)
+// ==========================================
+
+// 1. GET: Fetch all questions from the question bank
+router.get('/admin/question-bank', async (req, res) => {
+    try {
+        const questions = await QuestionBank.find().sort({ createdAt: -1 });
+        res.status(200).json(questions);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 module.exports = router;
