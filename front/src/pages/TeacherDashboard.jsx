@@ -8,7 +8,6 @@ function TeacherDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [contentForm, setContentForm] = useState({ title: '', description: '', type: 'homework' });
 
-  // ቶከኑን ከ localStorage ማግኘት
   const getAuthHeader = () => {
     const token = localStorage.getItem('token');
     return { headers: { Authorization: `Bearer ${token}` } };
@@ -59,7 +58,7 @@ function TeacherDashboard() {
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static
       `}>
         <div>
-          {/* Sidebar Header - Now visible everywhere or nicely adjusted */}
+          {/* Sidebar Header with proper padding to prevent clipping */}
           <div className="p-6 border-b border-blue-900/50">
             <h1 className="text-xl font-extrabold text-[#d4af37]">Max Technology</h1>
             <p className="text-xs text-gray-300 mt-1">Teacher Panel</p>
@@ -92,7 +91,6 @@ function TeacherDashboard() {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        {/* Desktop Header matching screenshot */}
         <header className="hidden md:flex items-center justify-between bg-[#123758] border-b border-blue-900 px-8 py-4 shadow-sm sticky top-0 z-20 text-white">
           <h2 className="text-xl font-extrabold text-[#d4af37]">Max Technology</h2>
           <div className="flex items-center space-x-6">
@@ -119,7 +117,6 @@ function TeacherDashboard() {
             </p>
           </div>
 
-          {/* Quick Actions */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
             <h4 className="text-lg font-bold text-[#123758]">
               ፈጣን ማስተካከያዎች
@@ -133,7 +130,6 @@ function TeacherDashboard() {
             </button>
           </div>
 
-          {/* Modal for Posting Content */}
           {openModal && (
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
