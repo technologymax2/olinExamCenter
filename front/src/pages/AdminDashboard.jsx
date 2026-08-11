@@ -273,6 +273,18 @@ function AdminDashboard() {
       .catch(err => alert(err.response?.data?.error || 'ጥያቄዎችን በመሰረዝ ላይ ስህተት ተፈጥሯል'));
   };
 
+  // የዚህን ትምህርት ጥያቄዎች በሙሉ የማጥፋት ሎጂክ (Delete by Subject)
+  const handleDeleteBySubject = (subjectName) => {
+    if (!window.confirm(`እርግጠኛ ኖት የ "${subjectName}" ትምህርት ጥያቄዎችን በሙሉ መሰረዝ ይፈልጋሉ?`)) return;
+
+    axios.delete(`${API_URL}/api/admin/question-bank/subject/${encodeURIComponent(subjectName)}`, getAuthHeader())
+      .then(() => {
+        alert(`የ "${subjectName}" ትምህርት ጥያቄዎች በሙሉ ተሰርዘዋል!`);
+        fetchQuestionBank();
+      })
+      .catch(err => alert(err.response?.data?.error || 'ጥያቄዎችን በመሰረዝ ላይ ስህተት ተፈጥሯል'));
+  };
+
   // Group questions by subject
   const groupedQuestions = questionBankList.reduce((acc, q) => {
     const subject = q.subject ? q.subject.trim() : 'General';
@@ -326,7 +338,6 @@ function AdminDashboard() {
             <a href="#dashboard" onClick={() => setSidebarOpen(false)} className="flex items-center space-x-3 p-3 rounded-lg bg-blue-900/50 text-[#d4af37] font-medium transition">
               <span>ዳሽቦርድ</span>
             </a>
-
             <button 
               onClick={() => { setOpenQuestionBankModal(true); setSidebarOpen(false); }} 
               className="w-full text-left flex items-center space-x-3 p-3 rounded-lg hover:bg-blue-900/40 text-gray-200 font-medium transition text-sm"
@@ -477,11 +488,17 @@ function AdminDashboard() {
                 <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
                   {displayedSubjects.map((subjectName) => (
                     <div key={subjectName} className="space-y-3 border-l-4 border-blue-600 pl-4">
-                      {/* Subject Header */}
+                      {/* Subject Header with Delete by Subject Button */}
                       <div className="flex items-center justify-between bg-blue-50 px-4 py-2 rounded-lg">
                         <h5 className="font-extrabold text-[#123758] uppercase tracking-wide text-sm">
                           📖 {subjectName} ({groupedQuestions[subjectName].length} ጥያቄዎች)
                         </h5>
+                        <button
+                          onClick={() => handleDeleteBySubject(subjectName)}
+                          className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1 rounded shadow transition flex items-center space-x-1"
+                        >
+                          <span>🗑️ የዚህን ትምህርት ጥያቄዎች አጥፋ</span>
+                        </button>
                       </div>
 
                       {/* Questions under this subject */}
