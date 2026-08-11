@@ -16,6 +16,9 @@ function AdminDashboard() {
   const [questionBankList, setQuestionBankList] = useState([]);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
 
+  // State to track the currently selected subject filter for accordion/tabs
+  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('ALL');
+
   const [userForm, setUserForm] = useState({ name: '', email: '', role: 'student', password: '' });
   const [excelFile, setExcelFile] = useState(null);
   
@@ -40,7 +43,6 @@ function AdminDashboard() {
     explanation: ''
   });
 
-  // State for bulk pasted text questions
   const [bulkTextQuestions, setBulkTextQuestions] = useState('');
   const [bankFile, setBankFile] = useState(null);
 
@@ -57,7 +59,6 @@ function AdminDashboard() {
     window.location.href = '/login';
   };
 
-  // Fetch stats and question bank questions on load
   useEffect(() => {
     axios.get(`${API_URL}/api/admin/stats`, getAuthHeader())
       .then(response => setStats(response.data))
@@ -109,7 +110,6 @@ function AdminDashboard() {
     }
   };
 
-  // Helper function to parse pasted text block into structured questions array
   const parseBulkQuestions = (text) => {
     const rawBlocks = text.split(/\n(?=\d+\.\s+)/);
     const parsed = [];
@@ -251,26 +251,24 @@ function AdminDashboard() {
       .catch(err => alert(err.response?.data?.error || 'ስህተት ተፈጥሯል'));
   };
 
-  // Delete a single question by its ID
   const handleDeleteQuestion = (questionId) => {
     if (!window.confirm('ይህን ጥያቄ ማጥፋት ይፈልጋሉ?')) return;
 
     axios.delete(`${API_URL}/api/admin/question-bank/${questionId}`, getAuthHeader())
       .then(() => {
         alert('ጥያቄው በተሳካ ሁኔታ ተሰርዟል!');
-        fetchQuestionBank(); // Refresh the list
+        fetchQuestionBank();
       })
       .catch(err => alert(err.response?.data?.error || 'ጥያቄውን በመሰረዝ ላይ ስህተት ተፈጥሯል'));
   };
 
-  // Delete all questions in the question bank
   const handleDeleteAllQuestions = () => {
     if (!window.confirm('ማስጠንቀቂያ: ሁሉንም የፈተና ጥያቄዎች ማጥፋት ይፈልጋሉ? ይህ ድርጊት ሊመለስ አይችልም!')) return;
 
     axios.delete(`${API_URL}/api/admin/question-bank/all`, getAuthHeader())
       .then(() => {
         alert('ሁሉም ጥያቄዎች ተሰርዘዋል!');
-        fetchQuestionBank(); // Refresh the list
+        fetchQuestionBank();
       })
       .catch(err => alert(err.response?.data?.error || 'ጥያቄዎችን በመሰረዝ ላይ ስህተት ተፈጥሯል'));
   };
@@ -284,6 +282,13 @@ function AdminDashboard() {
     acc[subject].push(q);
     return acc;
   }, {});
+
+  const subjectKeys = Object.keys(groupedQuestions);
+
+  // Filtered questions based on clicked subject tag
+  const displayedSubjects = selectedSubjectFilter === 'ALL' 
+    ? subjectKeys 
+    : subjectKeys.filter(s => s.toLowerCase() === selectedSubjectFilter.toLowerCase());
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row text-gray-800 font-sans relative">
@@ -439,41 +444,72 @@ function AdminDashboard() {
             ) : questionBankList.length === 0 ? (
               <p className="text-sm text-gray-500 py-4">በፈተና ባንክ ውስጥ እስካሁን ምንም ጥያቄ የለም።</p>
             ) : (
-              <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
-                {Object.keys(groupedQuestions).map((subjectName) => (
-                  <div key={subjectName} className="space-y-3 border-l-4 border-blue-600 pl-4">
-                    {/* Subject Header */}
-                    <div className="flex items-center justify-between bg-blue-50 px-4 py-2 rounded-lg">
-                      <h5 className="font-extrabold text-[#123758] uppercase tracking-wide text-sm">
-                        📖 {subjectName} ({groupedQuestions[subjectName].length} ጥያቄዎች)
-                      </h5>
-                    </div>
+              <div className="space-y-6">
+                {/* Subject Filter Pills / Clickable Options */}
+                <div className="flex flex-wrap gap-2 items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
+                  <span className="text-xs font-bold text-gray-600 mr-2">ትምህርት ማጣሪያ (Filter Subject):</span>
+                  <button
+                    onClick={() => setSelectedSubjectFilter('ALL')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm ${
+                      selectedSubjectFilter === 'ALL'
+                        ? 'bg-[#123758] text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-200 border'
+                    }`}
+                  >
+                    ሁሉም ({questionBankList.length})
+                  </button>
+                  {subjectKeys.map((subj) => (
+                    <button
+                      key={subj}
+                      onClick={() => setSelectedSubjectFilter(subj)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm uppercase ${
+                        selectedSubjectFilter.toLowerCase() === subj.toLowerCase()
+                          ? 'bg-blue-700 text-white'
+                          : 'bg-white text-gray-700 hover:bg-gray-200 border'
+                      }`}
+                    >
+                      {subj} ({groupedQuestions[subj].length})
+                    </button>
+                  ))}
+                </div>
 
-                    {/* Questions under this subject */}
-                    <div className="space-y-3">
-                      {groupedQuestions[subjectName].map((q, idx) => (
-                        <div key={q._id || idx} className="p-4 border rounded-lg bg-gray-50/50 space-y-2 relative shadow-sm">
-                          <div className="flex justify-between items-start">
-                            <span className="text-xs font-bold text-gray-500">ጥያቄ #{idx + 1}</span>
-                            <button 
-                              onClick={() => handleDeleteQuestion(q._id)}
-                              className="text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-1 bg-red-50 hover:bg-red-100 rounded transition"
-                            >
-                              🗑️ ሰርዝ
-                            </button>
+                {/* Displayed Subjects and Questions */}
+                <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
+                  {displayedSubjects.map((subjectName) => (
+                    <div key={subjectName} className="space-y-3 border-l-4 border-blue-600 pl-4">
+                      {/* Subject Header */}
+                      <div className="flex items-center justify-between bg-blue-50 px-4 py-2 rounded-lg">
+                        <h5 className="font-extrabold text-[#123758] uppercase tracking-wide text-sm">
+                          📖 {subjectName} ({groupedQuestions[subjectName].length} ጥያቄዎች)
+                        </h5>
+                      </div>
+
+                      {/* Questions under this subject */}
+                      <div className="space-y-3">
+                        {groupedQuestions[subjectName].map((q, idx) => (
+                          <div key={q._id || idx} className="p-4 border rounded-lg bg-gray-50/50 space-y-2 relative shadow-sm">
+                            <div className="flex justify-between items-start">
+                              <span className="text-xs font-bold text-gray-500">ጥያቄ #{idx + 1}</span>
+                              <button 
+                                onClick={() => handleDeleteQuestion(q._id)}
+                                className="text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-1 bg-red-50 hover:bg-red-100 rounded transition"
+                              >
+                                🗑️ ሰርዝ
+                              </button>
+                            </div>
+                            <p className="text-sm font-semibold text-gray-800">{q.questionText}</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600 pt-1">
+                              <div className={`p-1.5 rounded ${q.correctAnswer === 'A' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>A) {q.optionA}</div>
+                              <div className={`p-1.5 rounded ${q.correctAnswer === 'B' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>B) {q.optionB}</div>
+                              {q.optionC && <div className={`p-1.5 rounded ${q.correctAnswer === 'C' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>C) {q.optionC}</div>}
+                              {q.optionD && <div className={`p-1.5 rounded ${q.correctAnswer === 'D' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>D) {q.optionD}</div>}
+                            </div>
                           </div>
-                          <p className="text-sm font-semibold text-gray-800">{q.questionText}</p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600 pt-1">
-                            <div className={`p-1.5 rounded ${q.correctAnswer === 'A' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>A) {q.optionA}</div>
-                            <div className={`p-1.5 rounded ${q.correctAnswer === 'B' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>B) {q.optionB}</div>
-                            {q.optionC && <div className={`p-1.5 rounded ${q.correctAnswer === 'C' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>C) {q.optionC}</div>}
-                            {q.optionD && <div className={`p-1.5 rounded ${q.correctAnswer === 'D' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>D) {q.optionD}</div>}
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </div>
