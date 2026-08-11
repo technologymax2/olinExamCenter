@@ -250,7 +250,8 @@ function AdminDashboard() {
       })
       .catch(err => alert(err.response?.data?.error || 'ስህተት ተፈጥሯል'));
   };
- // Delete a single question by its ID
+
+  // Delete a single question by its ID
   const handleDeleteQuestion = (questionId) => {
     if (!window.confirm('ይህን ጥያቄ ማጥፋት ይፈልጋሉ?')) return;
 
@@ -273,6 +274,17 @@ function AdminDashboard() {
       })
       .catch(err => alert(err.response?.data?.error || 'ጥያቄዎችን በመሰረዝ ላይ ስህተት ተፈጥሯል'));
   };
+
+  // Group questions by subject
+  const groupedQuestions = questionBankList.reduce((acc, q) => {
+    const subject = q.subject ? q.subject.trim() : 'General';
+    if (!acc[subject]) {
+      acc[subject] = [];
+    }
+    acc[subject].push(q);
+    return acc;
+  }, {});
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row text-gray-800 font-sans relative">
       
@@ -396,9 +408,9 @@ function AdminDashboard() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-4">
               <div>
                 <h4 className="text-lg font-bold text-[#123758]">📚 የፈተና ጥያቄዎች ባንክ (Question Bank Inventory)</h4>
-                <p className="text-xs text-gray-500 mt-1">በዚህ ክፍል ውስጥ በዳታቤዝ ውስጥ ያሉትን ጥያቄዎች ማየትና መቆጣጠር ይችላሉ።</p>
+                <p className="text-xs text-gray-500 mt-1">በዚህ ክፍል ውስጥ በዳታቤዝ ውስጥ ያሉትን ጥያቄዎች በዓይነት ተደራጅተው ማየትና መቆጣጠር ይችላሉ።</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button 
                   onClick={() => setOpenQuestionBankModal(true)}
                   className="bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow transition"
@@ -411,6 +423,14 @@ function AdminDashboard() {
                 >
                   📝 ፈተና መርሐ-ግብር አውጣ (Schedule Exam)
                 </button>
+                {questionBankList.length > 0 && (
+                  <button 
+                    onClick={handleDeleteAllQuestions}
+                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow transition"
+                  >
+                    🗑️ ሁሉንም ጥያቄዎች አጥፋ
+                  </button>
+                )}
               </div>
             </div>
 
@@ -419,21 +439,38 @@ function AdminDashboard() {
             ) : questionBankList.length === 0 ? (
               <p className="text-sm text-gray-500 py-4">በፈተና ባንክ ውስጥ እስካሁን ምንም ጥያቄ የለም።</p>
             ) : (
-              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                {questionBankList.map((q, idx) => (
-                  <div key={q._id || idx} className="p-4 border rounded-lg bg-gray-50/50 space-y-2">
-                    <div className="flex justify-between items-start">
-                      <span className="text-xs font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded uppercase">
-                        {q.subject || 'General'}
-                      </span>
-                      <span className="text-xs text-gray-400">ጥያቄ #{idx + 1}</span>
+              <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
+                {Object.keys(groupedQuestions).map((subjectName) => (
+                  <div key={subjectName} className="space-y-3 border-l-4 border-blue-600 pl-4">
+                    {/* Subject Header */}
+                    <div className="flex items-center justify-between bg-blue-50 px-4 py-2 rounded-lg">
+                      <h5 className="font-extrabold text-[#123758] uppercase tracking-wide text-sm">
+                        📖 {subjectName} ({groupedQuestions[subjectName].length} ጥያቄዎች)
+                      </h5>
                     </div>
-                    <p className="text-sm font-semibold text-gray-800">{q.questionText}</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600 pt-1">
-                      <div className={`p-1.5 rounded ${q.correctAnswer === 'A' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>A) {q.optionA}</div>
-                      <div className={`p-1.5 rounded ${q.correctAnswer === 'B' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>B) {q.optionB}</div>
-                      {q.optionC && <div className={`p-1.5 rounded ${q.correctAnswer === 'C' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>C) {q.optionC}</div>}
-                      {q.optionD && <div className={`p-1.5 rounded ${q.correctAnswer === 'D' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>D) {q.optionD}</div>}
+
+                    {/* Questions under this subject */}
+                    <div className="space-y-3">
+                      {groupedQuestions[subjectName].map((q, idx) => (
+                        <div key={q._id || idx} className="p-4 border rounded-lg bg-gray-50/50 space-y-2 relative shadow-sm">
+                          <div className="flex justify-between items-start">
+                            <span className="text-xs font-bold text-gray-500">ጥያቄ #{idx + 1}</span>
+                            <button 
+                              onClick={() => handleDeleteQuestion(q._id)}
+                              className="text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-1 bg-red-50 hover:bg-red-100 rounded transition"
+                            >
+                              🗑️ ሰርዝ
+                            </button>
+                          </div>
+                          <p className="text-sm font-semibold text-gray-800">{q.questionText}</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600 pt-1">
+                            <div className={`p-1.5 rounded ${q.correctAnswer === 'A' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>A) {q.optionA}</div>
+                            <div className={`p-1.5 rounded ${q.correctAnswer === 'B' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>B) {q.optionB}</div>
+                            {q.optionC && <div className={`p-1.5 rounded ${q.correctAnswer === 'C' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>C) {q.optionC}</div>}
+                            {q.optionD && <div className={`p-1.5 rounded ${q.correctAnswer === 'D' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'bg-white border'}`}>D) {q.optionD}</div>}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}
@@ -693,7 +730,7 @@ function AdminDashboard() {
 
       {/* 5. Approval Modal */}
       {openApprovalModal && (
-        <div className="fixed inset-0 z-50 flex items-0 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="bg-emerald-600 text-white px-6 py-4 flex justify-between items-center">
               <h3 className="font-bold text-lg">✅ ጥያቄ አጽድቅ</h3>
