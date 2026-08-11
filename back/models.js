@@ -47,7 +47,10 @@ const Content = mongoose.model('Content', contentSchema);
 const questionBankSchema = new mongoose.Schema({
     subject: { type: String, required: true },
     questionText: { type: String, required: true },
-    options: [{ type: String, required: true }], // [a, b, c, d]
+    optionA: { type: String, required: true },
+    optionB: { type: String, required: true },
+    optionC: { type: String, default: '' },
+    optionD: { type: String, default: '' },
     correctAnswer: { type: String, required: true }, // 'A', 'B', 'C', or 'D'
     explanation: { type: String, default: '' },
     createdAt: { type: Date, default: Date.now }
