@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-// AdminDashboard.js ውስጥ የሚጻፈው
 import ScheduledExamsTable from '../components/ScheduledExamsTable';
+
 const API_URL = process.env.REACT_APP_API_URL || 'https://olinexamcenter.onrender.com';
 
 function AdminDashboard() {
@@ -13,11 +13,8 @@ function AdminDashboard() {
   const [openApprovalModal, setOpenApprovalModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // New state to hold questions visible to the admin from the database
   const [questionBankList, setQuestionBankList] = useState([]);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
-
-  // State to track the currently selected subject filter for accordion/tabs
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('ALL');
 
   const [userForm, setUserForm] = useState({ name: '', email: '', role: 'student', password: '' });
@@ -30,6 +27,8 @@ function AdminDashboard() {
     resultReleaseDate: '', 
     duration: '',
     numberOfQuestions: 10,
+    studentGroup: 'ALL',
+    examType: 'Multiple Choice',
     description: '' 
   });
 
@@ -224,7 +223,7 @@ function AdminDashboard() {
       .then(() => { 
         alert('የፈተና መርሐ-ግብር እና የጥያቄ ገደብ ተሳክቷል!'); 
         setOpenExamModal(false); 
-        setExamForm({ title: '', subject: '', examDate: '', resultReleaseDate: '', duration: '', numberOfQuestions: 10, description: '' });
+        setExamForm({ title: '', subject: '', examDate: '', resultReleaseDate: '', duration: '', numberOfQuestions: 10, studentGroup: 'ALL', examType: 'Multiple Choice', description: '' });
       })
       .catch(err => {
         console.error(err);
@@ -274,7 +273,6 @@ function AdminDashboard() {
       .catch(err => alert(err.response?.data?.error || 'ጥያቄዎችን በመሰረዝ ላይ ስህተት ተፈጥሯል'));
   };
 
-  // የዚህን ትምህርት ጥያቄዎች በሙሉ የማጥፋት ሎጂክ (Delete by Subject)
   const handleDeleteBySubject = (subjectName) => {
     if (!window.confirm(`እርግጠኛ ኖት የ "${subjectName}" ትምህርት ጥያቄዎችን በሙሉ መሰረዝ ይፈልጋሉ?`)) return;
 
@@ -286,7 +284,6 @@ function AdminDashboard() {
       .catch(err => alert(err.response?.data?.error || 'ጥያቄዎችን በመሰረዝ ላይ ስህተት ተፈጥሯል'));
   };
 
-  // Group questions by subject
   const groupedQuestions = questionBankList.reduce((acc, q) => {
     const subject = q.subject ? q.subject.trim() : 'General';
     if (!acc[subject]) {
@@ -298,7 +295,6 @@ function AdminDashboard() {
 
   const subjectKeys = Object.keys(groupedQuestions);
 
-  // Filtered questions based on clicked subject tag
   const displayedSubjects = selectedSubjectFilter === 'ALL' 
     ? subjectKeys 
     : subjectKeys.filter(s => s.toLowerCase() === selectedSubjectFilter.toLowerCase());
@@ -420,11 +416,7 @@ function AdminDashboard() {
             </div>
           </div>
 
-
-
-<ScheduledExamsTable />
-
-
+          <ScheduledExamsTable />
           
           {/* Admin Question Bank Preview Section */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
@@ -463,7 +455,6 @@ function AdminDashboard() {
               <p className="text-sm text-gray-500 py-4">በፈተና ባንክ ውስጥ እስካሁን ምንም ጥያቄ የለም።</p>
             ) : (
               <div className="space-y-6">
-                {/* Subject Filter Pills / Clickable Options */}
                 <div className="flex flex-wrap gap-2 items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
                   <span className="text-xs font-bold text-gray-600 mr-2">ትምህርት ማጣሪያ (Filter Subject):</span>
                   <button
@@ -491,11 +482,9 @@ function AdminDashboard() {
                   ))}
                 </div>
 
-                {/* Displayed Subjects and Questions */}
                 <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
                   {displayedSubjects.map((subjectName) => (
                     <div key={subjectName} className="space-y-3 border-l-4 border-blue-600 pl-4">
-                      {/* Subject Header with Delete by Subject Button */}
                       <div className="flex items-center justify-between bg-blue-50 px-4 py-2 rounded-lg">
                         <h5 className="font-extrabold text-[#123758] uppercase tracking-wide text-sm">
                           📖 {subjectName} ({groupedQuestions[subjectName].length} ጥያቄዎች)
@@ -508,7 +497,6 @@ function AdminDashboard() {
                         </button>
                       </div>
 
-                      {/* Questions under this subject */}
                       <div className="space-y-3">
                         {groupedQuestions[subjectName].map((q, idx) => (
                           <div key={q._id || idx} className="p-4 border rounded-lg bg-gray-50/50 space-y-2 relative shadow-sm">
@@ -540,7 +528,7 @@ function AdminDashboard() {
         </div>
       </main>
 
-      {/* 1. Question Bank Modal (ጥያቄዎችን ወደ ባንክ መጫኛ) */}
+      {/* 1. Question Bank Modal */}
       {openQuestionBankModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden">
@@ -561,7 +549,6 @@ function AdminDashboard() {
                 />
               </div>
 
-              {/* Bulk Text Paste Option */}
               <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-2">
                 <label className="block text-xs font-bold text-blue-900 mb-1">📋 ብዙ ጥያቄዎችን በቀጥታ ፔስት (Paste) አድርግ</label>
                 <p className="text-xs text-gray-500">እንደ 1. ... a) ... b) ... Answer: ... Explanation: ያሉት ጽሁፎችን በቀጥታ እዚህ ጋር መለጠፍ ይችላሉ።</p>
@@ -619,7 +606,7 @@ function AdminDashboard() {
         </div>
       )}
 
-      {/* 2. Exam Schedule Modal (የፈተና መርሐ-ግብር ማቀናበሪያ) */}
+      {/* 2. Exam Schedule Modal */}
       {openExamModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
@@ -651,6 +638,35 @@ function AdminDashboard() {
                 />
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">👥 የሚፈተኑ ተማሪዎች ግሩፕ (Student Group)</label>
+                  <select 
+                    value={examForm.studentGroup} 
+                    onChange={e => setExamForm({...examForm, studentGroup: e.target.value})} 
+                    className="w-full px-3 py-2 border rounded-lg bg-white text-sm"
+                  >
+                    <option value="ALL">ሁሉም ተማሪዎች (All Students)</option>
+                    <option value="Batch-1">ግሩፕ 1 (Batch 1)</option>
+                    <option value="Batch-2">ግሩፕ 2 (Batch 2)</option>
+                    <option value="Department-A">ክፍል A</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">📋 የፈተና ዓይነት (Exam Type)</label>
+                  <select 
+                    value={examForm.examType} 
+                    onChange={e => setExamForm({...examForm, examType: e.target.value})} 
+                    className="w-full px-3 py-2 border rounded-lg bg-white text-sm"
+                  >
+                    <option value="Multiple Choice">ብዙ ምርጫ (Multiple Choice)</option>
+                    <option value="True/False">እውነት/ሐሰት (True/False)</option>
+                    <option value="Mixed">ቅልቅል (Mixed)</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1">የፈተና ቀን እና ሰዓት</label>
@@ -674,7 +690,7 @@ function AdminDashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">የቆይታ ጊዜ (በደቃቃ)</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">የቆይታ ጊዜ (በደቂቃ)</label>
                   <input 
                     type="number" 
                     value={examForm.duration} 
