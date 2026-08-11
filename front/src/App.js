@@ -81,6 +81,7 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+              <Route path="/student/exam/:examId" element={<TakeExam />} />
           </Routes>
         </main>
 
