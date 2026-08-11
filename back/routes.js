@@ -7,8 +7,8 @@ const multer = require('multer');
 // Configure multer for file upload handling (temporary storage)
 const upload = multer({ dest: 'uploads/' });
 
-// Models (Imported using destructuring - QuestionBank ተጨምሯል)
-const { User, Exam, Content, QuestionBank } = require('./models');
+// Models (Imported using destructuring - Student ተጨምሯል)
+const { User, Student, Exam, Content, QuestionBank } = require('./models');
 
 // ==========================================
 // USER ROUTES
@@ -52,10 +52,87 @@ router.post('/users/upload-excel', upload.single('file'), async (req, res) => {
 });
 
 // ==========================================
-// PASSWORD MANAGEMENT ROUTES (Student, Teacher & Admin)
+// HR / STUDENT REGISTRATION ROUTES (አዲስ የተጨመረ)
 // ==========================================
 
-// 1. የድሮውን ፓስወርድ በማስገባት መቀየር (ለ ተማሪ/መምህር)
+// 1. ሁሉንም የተመዘገቡ ተማሪዎች ማምጣት (Get All Students)
+router.get('/hr/students', async (req, res) => {
+    try {
+        const students = await Student.find().sort({ createdAt: -1 });
+        res.status(200).json(students);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. አዲስ ተማሪ መዝግብ (Register Student)
+router.post('/hr/students', async (req, res) => {
+    try {
+        const studentData = req.body;
+        
+        const existingStudent = await Student.findOne({ studentIdNumber: studentData.studentIdNumber });
+        if (existingStudent) {
+            return res.status(400).json({ error: 'ይህ የመታወቂያ ቁጥር ቀድሞ ተመዝግቧል!' });
+        }
+
+        const newStudent = new Student(studentData);
+        await newStudent.save();
+
+        res.status(201).json({ message: 'ተማሪው በተሳካ ሁኔታ ተመዝግቧል!', student: newStudent });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// 3. የተማሪን መረጃ ማስተካከል (Update Student)
+router.put('/hr/students/:id', async (req, res) => {
+    try {
+        const updatedStudent = await Student.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true }
+        );
+
+        if (!updatedStudent) {
+            return res.status(404).json({ error: 'ተማሪው አልተገኘም!' });
+        }
+
+        res.status(200).json({ message: 'የተማሪው መረጃ በተሳካ ሁኔታ ተሻሽሏል!', student: updatedStudent });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 4. ተማሪን ከሲስተም መሰረዝ (Delete Student)
+router.delete('/hr/students/:id', async (req, res) => {
+    try {
+        const deletedStudent = await Student.findByIdAndDelete(req.params.id);
+        if (!deletedStudent) {
+            return res.status(404).json({ error: 'ተማሪው አልተገኘም!' });
+        }
+        res.status(200).json({ message: 'ተማሪው በተሳካ ሁኔታ ተሰርዟል!' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 5. ለ QR ማረጋገጫ (Verify Student ID)
+router.get('/students/verify/:id', async (req, res) => {
+    try {
+        const student = await Student.findById(req.params.id);
+        if (!student) {
+            return res.status(404).json({ error: 'የተማሪው መታወቂያ ትክክል አይደለም ወይም አልተገኘም!' });
+        }
+        res.status(200).json({ message: 'ታማኝ እና የተረጋገጠ ተማሪ ነው', student });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ==========================================
+// PASSWORD MANAGEMENT ROUTES
+// ==========================================
+
 router.put('/users/change-password', async (req, res) => {
     try {
         const { email, oldPassword, newPassword } = req.body;
@@ -80,7 +157,6 @@ router.put('/users/change-password', async (req, res) => {
     }
 });
 
-// 2. ፓስወርድ ሲረሳ ለአድሚን ጥያቄ መላክ
 router.post('/users/request-password-reset', async (req, res) => {
     try {
         const { email } = req.body;
@@ -98,7 +174,6 @@ router.post('/users/request-password-reset', async (req, res) => {
     }
 });
 
-// 3. አድሚኑ ጥያቄውን ማጽደቅ እና የሰዓት ገደብ (Time Limit በሰዓት) መስጠት
 router.post('/admin/approve-password-reset', async (req, res) => {
     try {
         const { email, hoursValid = 1 } = req.body; 
@@ -120,7 +195,6 @@ router.post('/admin/approve-password-reset', async (req, res) => {
     }
 });
 
-// 4. አድሚኑ በፈቀደው የሰዓት ገደብ ውስጥ አዲስ ፓስወርድ ማስተካከል
 router.put('/users/reset-password-with-approval', async (req, res) => {
     try {
         const { email, newPassword } = req.body;
@@ -146,10 +220,9 @@ router.put('/users/reset-password-with-approval', async (req, res) => {
 });
 
 // ==========================================
-// QUESTION BANK ROUTES (Fetch, Single & Bulk Add)
+// QUESTION BANK ROUTES
 // ==========================================
 
-// GET: Fetch all questions from the question bank
 router.get('/admin/question-bank', async (req, res) => {
     try {
         const questions = await QuestionBank.find().sort({ createdAt: -1 });
@@ -159,7 +232,6 @@ router.get('/admin/question-bank', async (req, res) => {
     }
 });
 
-// Add a single question manually
 router.post('/admin/question-bank/add', async (req, res) => {
     try {
         const { subject, questionText, optionA, optionB, optionC, optionD, correctAnswer, explanation } = req.body;
@@ -186,7 +258,6 @@ router.post('/admin/question-bank/add', async (req, res) => {
     }
 });
 
-// Bulk add/parse questions from pasted text
 router.post('/admin/question-bank/bulk-add', async (req, res) => {
   try {
     const { questions, rawText, subject } = req.body;
@@ -196,19 +267,17 @@ router.post('/admin/question-bank/bulk-add', async (req, res) => {
       parsedQuestions = questions;
     } else if (rawText) {
       let cleanedText = rawText
-        .replace(/🎓[^\n]*/g, '')          
-        .replace(/advertisement/gi, '')          
-        .replace(/View\s*Answer/gi, '')          
+        .replace(/🎓[^\n]*/g, '')         
+        .replace(/advertisement/gi, '')         
+        .replace(/View\s*Answer/gi, '')         
         .replace(/FoodAnswer:/gi, 'Answer:');     
 
-      // Split blocks by question numbers (e.g., 1., 2., etc.)
       const blocks = cleanedText
         .split(/(?=\b\d+[\.\)]\s)/)
         .filter(b => b.trim().length > 0);
 
       for (let block of blocks) {
         try {
-          // Extract question text and options dynamically
           const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
           if (lines.length === 0) continue;
 
@@ -269,8 +338,9 @@ router.post('/admin/question-bank/bulk-add', async (req, res) => {
 });
 
 // ==========================================
-// EXAM ROUTES
+// EXAM & CONTENT ROUTES
 // ==========================================
+
 router.get('/exams', async (req, res) => {
     try {
         const exams = await Exam.find({}, 'title subject examDate resultReleaseDate duration');
@@ -280,9 +350,6 @@ router.get('/exams', async (req, res) => {
     }
 });
 
-// ==========================================
-// CONTENT ROUTES
-// ==========================================
 router.get('/contents', async (req, res) => {
     try {
         const contents = await Content.find().sort({ createdAt: -1 });
@@ -306,9 +373,10 @@ router.post('/contents', async (req, res) => {
 // ==========================================
 // ADMIN STATS & MANAGEMENT ROUTES
 // ==========================================
+
 router.get('/admin/stats', async (req, res) => {
     try {
-        const totalStudents = await User.countDocuments({ role: 'student' });
+        const totalStudents = await Student.countDocuments(); // ከStudent ስኪማ የሚቆጠር ይሆናል
         const totalTeachers = await User.countDocuments({ role: 'teacher' });
         const totalExams = await Exam.countDocuments();
         
@@ -359,7 +427,7 @@ router.post('/admin/exams', async (req, res) => {
 });
 
 // ==========================================
-// LOGIN ROUTE
+// LOGIN ROUTE (Updated to support 'hr' role)
 // ==========================================
 router.post('/login', async (req, res) => {
     try {
@@ -378,7 +446,7 @@ router.post('/login', async (req, res) => {
         res.status(200).json({
             message: 'በተሳካ ሁኔታ ገብተዋል!',
             token: user._id, 
-            role: user.role,
+            role: user.role, // 'admin', 'teacher', 'student', or 'hr'
             name: user.name,
             email: user.email
         });
@@ -387,9 +455,6 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// ==========================================
-// TEMPORARY REGISTER ROUTE (GET)
-// ==========================================
 router.get('/register-admin', async (req, res) => {
     try {
         const email = 'admin@max.com';
@@ -421,9 +486,6 @@ router.get('/register-admin', async (req, res) => {
     }
 });
 
-// ==========================================
-// ADMIN PASSWORD CHANGE ROUTE
-// ==========================================
 router.put('/admin/change-password', async (req, res) => {
     try {
         const { email, newPassword } = req.body;
@@ -443,7 +505,6 @@ router.put('/admin/change-password', async (req, res) => {
     }
 });
 
-// Get specific exam and questions
 router.get('/exams/:id', async (req, res) => {
     try {
         const exam = await Exam.findById(req.params.id);
@@ -457,7 +518,6 @@ router.get('/exams/:id', async (req, res) => {
     }
 });
 
-// Submit exam answers & grade automatically
 router.post('/exams/:id/submit', async (req, res) => {
     try {
         const { answers } = req.body; 
@@ -485,10 +545,9 @@ router.post('/exams/:id/submit', async (req, res) => {
 });      
 
 // ==========================================
-// QUESTION BANK DELETE ROUTES (የተስተካከለ)
+// QUESTION BANK DELETE ROUTES
 // ==========================================
 
-// 1. ሁሉንም ጥያቄዎች ማጥፊያ ራውት
 router.delete('/admin/question-bank/all', async (req, res) => {
   try {
     await QuestionBank.deleteMany({});
@@ -498,7 +557,6 @@ router.delete('/admin/question-bank/all', async (req, res) => {
   }
 });
 
-// 2. በሰጡት Subject ስም መሰረት ጥያቄዎችን በሙሉ ለማጥፋት (የቀድሞው 404 ስህተት ማስተካከያ)
 router.delete('/admin/question-bank/subject/:subject', async (req, res) => {
   try {
     const subjectName = decodeURIComponent(req.params.subject);
@@ -517,7 +575,6 @@ router.delete('/admin/question-bank/subject/:subject', async (req, res) => {
   }
 });
 
-// 3. ነጠላ ጥያቄ በ ID ማጥፊያ ራውት
 router.delete('/admin/question-bank/:id', async (req, res) => {
   try {
     const deletedQuestion = await QuestionBank.findByIdAndDelete(req.params.id);
@@ -530,13 +587,10 @@ router.delete('/admin/question-bank/:id', async (req, res) => {
   }
 });
 
-
-
 // ==========================================
-// EXAM MANAGEMENT ROUTES (View, Update, Delete)
+// EXAM MANAGEMENT ROUTES
 // ==========================================
 
-// 1. ሁሉንም የተዘጋጁ ፈተናዎች ለማምጣት (Get All Exams)
 router.get('/admin/exams', async (req, res) => {
     try {
         const exams = await Exam.find().sort({ createdAt: -1 });
@@ -546,7 +600,6 @@ router.get('/admin/exams', async (req, res) => {
     }
 });
 
-// 2. የተወሰነ ፈተናን በ ID ለማስተካከል (Update Exam)
 router.put('/admin/exams/:id', async (req, res) => {
     try {
         const { title, subject, examDate, resultReleaseDate, duration } = req.body;
@@ -567,7 +620,6 @@ router.put('/admin/exams/:id', async (req, res) => {
     }
 });
 
-// 3. የተዘጋጀ ፈተናን ለመሰረዝ (Delete Exam)
 router.delete('/admin/exams/:id', async (req, res) => {
     try {
         const deletedExam = await Exam.findByIdAndDelete(req.params.id);
@@ -579,4 +631,5 @@ router.delete('/admin/exams/:id', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
 module.exports = router;
