@@ -486,4 +486,24 @@ router.post('/exams/:id/submit', async (req, res) => {
     }
 });      
 
+
+// Delete a single question
+router.delete('/api/admin/question-bank/:id', verifyAdminToken, async (req, res) => {
+  try {
+    await Question.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Question deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete question' });
+  }
+});
+
+// Delete all questions
+router.delete('/api/admin/question-bank/all', verifyAdminToken, async (req, res) => {
+  try {
+    await Question.deleteMany({});
+    res.json({ message: 'All questions deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete all questions' });
+  }
+});
 module.exports = router;
