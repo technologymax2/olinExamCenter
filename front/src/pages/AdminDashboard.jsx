@@ -5,12 +5,13 @@ import ScheduledExamsTable from '../components/ScheduledExamsTable';
 const API_URL = process.env.REACT_APP_API_URL || 'https://olinexamcenter.onrender.com';
 
 function AdminDashboard() {
-  const [stats, setStats] = useState({ totalStudents: 0, totalTeachers: 0, totalExams: 0 });
+  const [stats, setStats] = useState({ totalStudents: 0, totalTeachers: 0, totalExams: 0, totalEmployees: 0 });
   const [openUserModal, setOpenUserModal] = useState(false);
   const [openExamModal, setOpenExamModal] = useState(false);
   const [openQuestionBankModal, setOpenQuestionBankModal] = useState(false);
   const [openPasswordModal, setOpenPasswordModal] = useState(false);
   const [openApprovalModal, setOpenApprovalModal] = useState(false);
+  const [openEmployeeModal, setOpenEmployeeModal] = useState(false); // 🆕 HR Employee Modal State
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [questionBankList, setQuestionBankList] = useState([]);
@@ -48,6 +49,17 @@ function AdminDashboard() {
 
   const [passwordForm, setPasswordForm] = useState({ email: '', newPassword: '' });
   const [approvalForm, setApprovalForm] = useState({ email: '', hoursValid: 1 });
+
+  // 🆕 HR Employee Form State
+  const [employeeForm, setEmployeeForm] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    department: '',
+    position: '',
+    hireDate: '',
+    salary: ''
+  });
 
   const getAuthHeader = () => {
     const token = localStorage.getItem('token');
@@ -108,6 +120,20 @@ function AdminDashboard() {
         })
         .catch(err => console.error(err));
     }
+  };
+
+  // 🆕 HR Employee Submit Handler
+  const handleEmployeeSubmit = () => {
+    axios.post(`${API_URL}/api/admin/employees`, employeeForm, getAuthHeader())
+      .then(() => {
+        alert('የሰራተኛው መረጃ በ HR ስር በተሳካ ሁኔታ ተመዝግቧል!');
+        setOpenEmployeeModal(false);
+        setEmployeeForm({ fullName: '', email: '', phone: '', department: '', position: '', hireDate: '', salary: '' });
+      })
+      .catch(err => {
+        console.error(err);
+        alert(err.response?.data?.error || 'ሰራተኛውን በመመዝገብ ላይ ስህተት ተፈጥሯል');
+      });
   };
 
   const parseBulkQuestions = (text) => {
@@ -356,6 +382,14 @@ function AdminDashboard() {
               <span>👤 ተጠቃሚ መዝግብ</span>
             </button>
 
+            {/* 🆕 HR Employee Navigation Button */}
+            <button 
+              onClick={() => { setOpenEmployeeModal(true); setSidebarOpen(false); }} 
+              className="w-full text-left flex items-center space-x-3 p-3 rounded-lg hover:bg-blue-900/40 text-gray-200 font-medium transition text-sm"
+            >
+              <span>🏢 HR ሰራተኛ መዝግብ (Add Employee)</span>
+            </button>
+
             <button 
               onClick={() => { setOpenPasswordModal(true); setSidebarOpen(false); }} 
               className="w-full text-left flex items-center space-x-3 p-3 rounded-lg hover:bg-blue-900/40 text-gray-200 font-medium transition text-sm"
@@ -401,7 +435,7 @@ function AdminDashboard() {
             የአስተዳደር ዳሽቦርድ
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-[#123758]">
               <p className="text-sm font-medium text-gray-500">ጠቅላላ ተማሪዎች</p>
               <h4 className="text-3xl font-bold text-[#123758] mt-1">{stats.totalStudents}</h4>
@@ -413,6 +447,11 @@ function AdminDashboard() {
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-amber-500">
               <p className="text-sm font-medium text-gray-500">የተዘጋጁ ፈተናዎች</p>
               <h4 className="text-3xl font-bold text-amber-600 mt-1">{stats.totalExams}</h4>
+            </div>
+            {/* 🆕 HR Employees Stat Card */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-indigo-600">
+              <p className="text-sm font-medium text-gray-500">ጠቅላላ ሰራተኞች (HR)</p>
+              <h4 className="text-3xl font-bold text-indigo-600 mt-1">{stats.totalEmployees || 0}</h4>
             </div>
           </div>
 
@@ -437,6 +476,13 @@ function AdminDashboard() {
                   className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow transition"
                 >
                   📝 ፈተና መርሐ-ግብር አውጣ (Schedule Exam)
+                </button>
+                {/* 🆕 HR Employee Button in Quick Actions */}
+                <button 
+                  onClick={() => setOpenEmployeeModal(true)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow transition"
+                >
+                  🏢 HR ሰራተኛ ጨምር
                 </button>
                 {questionBankList.length > 0 && (
                   <button 
@@ -776,7 +822,105 @@ function AdminDashboard() {
         </div>
       )}
 
-      {/* 4. Password Change Modal */}
+      {/* 🆕 4. HR Employee Modal */}
+      {openEmployeeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+            <div className="bg-indigo-600 text-white px-6 py-4 flex justify-between items-center">
+              <h3 className="font-bold text-lg">🏢 HR ሰራተኛ መዝግብ (Employee Registration)</h3>
+              <button onClick={() => setOpenEmployeeModal(false)} className="text-gray-100 hover:text-white">✕</button>
+            </div>
+            
+            <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">የሰራተኛው ሙሉ ስም</label>
+                <input 
+                  type="text" 
+                  value={employeeForm.fullName} 
+                  onChange={e => setEmployeeForm({...employeeForm, fullName: e.target.value})} 
+                  className="w-full px-4 py-2 border rounded-lg" 
+                  placeholder="ምሳሌ፦ አበበ ከበደ" 
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">ኢሜይል (Email)</label>
+                  <input 
+                    type="email" 
+                    value={employeeForm.email} 
+                    onChange={e => setEmployeeForm({...employeeForm, email: e.target.value})} 
+                    className="w-full px-4 py-2 border rounded-lg" 
+                    placeholder="example@maxtech.com" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">ስልክ ቁጥር (Phone)</label>
+                  <input 
+                    type="text" 
+                    value={employeeForm.phone} 
+                    onChange={e => setEmployeeForm({...employeeForm, phone: e.target.value})} 
+                    className="w-full px-4 py-2 border rounded-lg" 
+                    placeholder="0911..." 
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">የሥራ ክፍል (Department)</label>
+                  <input 
+                    type="text" 
+                    value={employeeForm.department} 
+                    onChange={e => setEmployeeForm({...employeeForm, department: e.target.value})} 
+                    className="w-full px-4 py-2 border rounded-lg" 
+                    placeholder="IT / Finance / HR" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">የሥራ መደብ (Position)</label>
+                  <input 
+                    type="text" 
+                    value={employeeForm.position} 
+                    onChange={e => setEmployeeForm({...employeeForm, position: e.target.value})} 
+                    className="w-full px-4 py-2 border rounded-lg" 
+                    placeholder="Software Engineer" 
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">የተቀጠረበት ቀን (Hire Date)</label>
+                  <input 
+                    type="date" 
+                    value={employeeForm.hireDate} 
+                    onChange={e => setEmployeeForm({...employeeForm, hireDate: e.target.value})} 
+                    className="w-full px-4 py-2 border rounded-lg text-xs" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">ደመወዝ (Salary)</label>
+                  <input 
+                    type="number" 
+                    value={employeeForm.salary} 
+                    onChange={e => setEmployeeForm({...employeeForm, salary: e.target.value})} 
+                    className="w-full px-4 py-2 border rounded-lg" 
+                    placeholder="15000" 
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 border-t">
+              <button onClick={() => setOpenEmployeeModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg text-sm font-medium">ይቅር</button>
+              <button onClick={handleEmployeeSubmit} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow">ሰራተኛ መዝግብ</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Password Change Modal */}
       {openPasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
@@ -804,7 +948,7 @@ function AdminDashboard() {
         </div>
       )}
 
-      {/* 5. Approval Modal */}
+      {/* 6. Approval Modal */}
       {openApprovalModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
