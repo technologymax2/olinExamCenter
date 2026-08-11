@@ -421,4 +421,46 @@ router.put('/admin/change-password', async (req, res) => {
     }
 });
 
+
+// Get specific exam and questions
+router.get('/exams/:id', async (req, res) => {
+    try {
+        const exam = await Exam.findById(req.params.id);
+        if (!exam) return res.status(404).json({ error: 'ፈተናው አልተገኘም' });
+
+        // Fetch related questions from QuestionBank based on subject or specific criteria
+        const questions = await QuestionBank.find({ subject: exam.subject }).limit(20); 
+        
+        res.json({ exam, questions });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Submit exam answers & grade automatically
+router.post('/exams/:id/submit', async (req, res) => {
+    try {
+        const { answers } = req.body; // { questionId: 'A', ... }
+        let score = 0;
+        let total = Object.keys(answers).length;
+
+        for (let qId in answers) {
+            const question = await QuestionBank.findById(qId);
+            if (question && question.correctAnswer === answers[qId]) {
+                score++;
+            }
+        }
+
+        const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+
+        res.status(200).json({ 
+            message: 'ፈተናው ተጠናቋል',
+            score: percentage,
+            correctCount: score,
+            totalQuestions: total
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});     
 module.exports = router;
