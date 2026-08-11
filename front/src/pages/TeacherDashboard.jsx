@@ -13,11 +13,6 @@ function TeacherDashboard() {
     return { headers: { Authorization: `Bearer ${token}` } };
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    window.location.href = '/login';
-  };
-
   const handleSubmit = () => {
     axios.post(`${API_URL}/api/contents`, contentForm, getAuthHeader())
       .then(() => {
@@ -37,28 +32,22 @@ function TeacherDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row text-gray-800 font-sans">
+    <div className="min-h-[calc(100vh-4rem)] bg-gray-50 flex flex-col md:flex-row text-gray-800 font-sans relative">
       
-      {/* Mobile Header */}
-      <header className="md:hidden bg-[#123758] text-white flex items-center justify-between p-4 shadow-md sticky top-0 z-30">
-        <div className="flex items-center space-x-2">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="focus:outline-none">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-          </button>
-          <span className="font-bold text-lg text-[#d4af37]">Max Technology</span>
-        </div>
-        <button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-md font-semibold transition">
-          Logout
+      {/* Mobile Toggle Button for Sidebar */}
+      <div className="md:hidden bg-[#123758] text-white p-3 flex items-center justify-between shadow-sm">
+        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="flex items-center space-x-2 focus:outline-none">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+          <span className="text-sm font-semibold text-[#d4af37]">ምናሌ (Menu)</span>
         </button>
-      </header>
+      </div>
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-40 w-64 bg-[#123758] text-white transform transition-transform duration-300 ease-in-out flex flex-col justify-between
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static
+        fixed md:static inset-y-0 left-0 z-30 w-64 bg-[#123758] text-white transform transition-transform duration-300 ease-in-out flex flex-col justify-between
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0
       `}>
         <div>
-          {/* Sidebar Header with proper padding to prevent clipping */}
           <div className="p-6 border-b border-blue-900/50">
             <h1 className="text-xl font-extrabold text-[#d4af37]">Max Technology</h1>
             <p className="text-xs text-gray-300 mt-1">Teacher Panel</p>
@@ -86,114 +75,95 @@ function TeacherDashboard() {
       </aside>
 
       {sidebarOpen && (
-        <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/50 z-30 md:hidden" />
+        <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/50 z-20 md:hidden" />
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        <header className="hidden md:flex items-center justify-between bg-[#123758] border-b border-blue-900 px-8 py-4 shadow-sm sticky top-0 z-20 text-white">
-          <h2 className="text-xl font-extrabold text-[#d4af37]">Max Technology</h2>
-          <div className="flex items-center space-x-6">
-            <nav className="flex items-center space-x-6 text-sm font-semibold">
-              <a href="/home" className="hover:text-[#d4af37] transition">Home</a>
-              <span className="text-[#d4af37]">Teacher</span>
-            </nav>
-            <button 
-              onClick={handleLogout}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition"
-            >
-              Logout
-            </button>
-          </div>
-        </header>
+      <main className="flex-1 flex flex-col min-w-0 p-4 sm:p-6 lg:p-8 space-y-6 overflow-y-auto">
+        <div>
+          <h3 className="text-2xl sm:text-3xl font-extrabold text-[#123758]">
+            እንኳን ደህና መጡ, መምህር!
+          </h3>
+          <p className="text-sm text-gray-600 mt-1">
+            ለተማሪዎች እና ለወላጆች የቤት ስራዎችን፣ አሳይንመንቶችን እና መልዕክቶችን ከዚህ በታች ማስተዳደር ይችላሉ።
+          </p>
+        </div>
 
-        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
-          <div>
-            <h3 className="text-2xl sm:text-3xl font-extrabold text-[#123758]">
-              እንኳን ደህና መጡ, መምህር!
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              ለተማሪዎች እና ለወላጆች የቤት ስራዎችን፣ አሳይንመንቶችን እና መልዕክቶችን ከዚህ በታች ማስተዳደር ይችላሉ።
-            </p>
-          </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
+          <h4 className="text-lg font-bold text-[#123758]">
+            ፈጣን ማስተካከያዎች
+          </h4>
+          <button 
+            onClick={() => setOpenModal(true)}
+            className="inline-flex items-center space-x-2 bg-[#123758] hover:bg-blue-900 text-white px-4 py-2.5 rounded-lg font-medium transition shadow-sm text-sm sm:text-base"
+          >
+            <svg className="w-5 h-5 text-[#d4af37]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span>የቤት ስራ፣ አሳይንመንት ወይም መልዕክት ልቀቅ</span>
+          </button>
+        </div>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
-            <h4 className="text-lg font-bold text-[#123758]">
-              ፈጣን ማስተካከያዎች
-            </h4>
-            <button 
-              onClick={() => setOpenModal(true)}
-              className="inline-flex items-center space-x-2 bg-[#123758] hover:bg-blue-900 text-white px-4 py-2.5 rounded-lg font-medium transition shadow-sm text-sm sm:text-base"
-            >
-              <svg className="w-5 h-5 text-[#d4af37]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              <span>የቤት ስራ፣ አሳይንመንት ወይም መልዕክት ልቀቅ</span>
-            </button>
-          </div>
-
-          {openModal && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
-                <div className="bg-[#123758] text-white px-6 py-4 flex justify-between items-center">
-                  <h4 className="font-bold text-lg">አዲስ መረጃ መጫኛ</h4>
-                  <button onClick={() => setOpenModal(false)} className="text-gray-300 hover:text-white">✕</button>
-                </div>
-                
-                <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">የይዘቱ ዓይነት</label>
-                    <select 
-                      value={contentForm.type}
-                      onChange={e => setContentForm({...contentForm, type: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123758] bg-white"
-                    >
-                      <option value="homework">የቤት ስራ (Homework)</option>
-                      <option value="assignment">አሳይንመንት (Assignment)</option>
-                      <option value="message">የወላጅ መልዕክት (Parent Message)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">ርዕስ (Title)</label>
-                    <input 
-                      type="text"
-                      placeholder="ርዕስ ያስገቡ"
-                      value={contentForm.title}
-                      onChange={e => setContentForm({...contentForm, title: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123758]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">መግለጫ / ዝርዝር (Description)</label>
-                    <textarea 
-                      rows={4}
-                      placeholder="መግለጫ ይጻፉ..."
-                      value={contentForm.description}
-                      onChange={e => setContentForm({...contentForm, description: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123758]"
-                    />
-                  </div>
+        {openModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
+              <div className="bg-[#123758] text-white px-6 py-4 flex justify-between items-center">
+                <h4 className="font-bold text-lg">አዲስ መረጃ መጫኛ</h4>
+                <button onClick={() => setOpenModal(false)} className="text-gray-300 hover:text-white">✕</button>
+              </div>
+              
+              <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">የይዘቱ ዓይነት</label>
+                  <select 
+                    value={contentForm.type}
+                    onChange={e => setContentForm({...contentForm, type: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123758] bg-white"
+                  >
+                    <option value="homework">የቤት ስራ (Homework)</option>
+                    <option value="assignment">አሳይንመንት (Assignment)</option>
+                    <option value="message">የወላጅ መልዕክት (Parent Message)</option>
+                  </select>
                 </div>
 
-                <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 border-t">
-                  <button 
-                    onClick={() => setOpenModal(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition"
-                  >
-                    ይቅር
-                  </button>
-                  <button 
-                    onClick={handleSubmit}
-                    className="px-5 py-2 text-sm font-medium bg-[#123758] hover:bg-blue-900 text-white rounded-lg transition shadow"
-                  >
-                    ለቀቅ
-                  </button>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">ርዕስ (Title)</label>
+                  <input 
+                    type="text"
+                    placeholder="ርዕስ ያስገቡ"
+                    value={contentForm.title}
+                    onChange={e => setContentForm({...contentForm, title: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123758]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">መግለጫ / ዝርዝር (Description)</label>
+                  <textarea 
+                    rows={4}
+                    placeholder="መግለጫ ይጻፉ..."
+                    value={contentForm.description}
+                    onChange={e => setContentForm({...contentForm, description: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123758]"
+                  />
                 </div>
               </div>
-            </div>
-          )}
 
-        </div>
+              <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 border-t">
+                <button 
+                  onClick={() => setOpenModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition"
+                >
+                  ይቅር
+                </button>
+                <button 
+                  onClick={handleSubmit}
+                  className="px-5 py-2 text-sm font-medium bg-[#123758] hover:bg-blue-900 text-white rounded-lg transition shadow"
+                >
+                  ለቀቅ
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
