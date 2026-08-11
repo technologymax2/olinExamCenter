@@ -530,4 +530,53 @@ router.delete('/admin/question-bank/:id', async (req, res) => {
   }
 });
 
+
+
+// ==========================================
+// EXAM MANAGEMENT ROUTES (View, Update, Delete)
+// ==========================================
+
+// 1. ሁሉንም የተዘጋጁ ፈተናዎች ለማምጣት (Get All Exams)
+router.get('/admin/exams', async (req, res) => {
+    try {
+        const exams = await Exam.find().sort({ createdAt: -1 });
+        res.status(200).json(exams);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. የተወሰነ ፈተናን በ ID ለማስተካከል (Update Exam)
+router.put('/admin/exams/:id', async (req, res) => {
+    try {
+        const { title, subject, examDate, resultReleaseDate, duration } = req.body;
+        
+        const updatedExam = await Exam.findByIdAndUpdate(
+            req.params.id,
+            { title, subject, examDate, resultReleaseDate, duration },
+            { new: true }
+        );
+
+        if (!updatedExam) {
+            return res.status(404).json({ error: 'ፈተናው አልተገኘም!' });
+        }
+
+        res.status(200).json({ message: 'ፈተናው በተሳካ ሁኔታ ተስተካክሏል!', updatedExam });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 3. የተዘጋጀ ፈተናን ለመሰረዝ (Delete Exam)
+router.delete('/admin/exams/:id', async (req, res) => {
+    try {
+        const deletedExam = await Exam.findByIdAndDelete(req.params.id);
+        if (!deletedExam) {
+            return res.status(404).json({ error: 'ፈተናው አልተገኘም!' });
+        }
+        res.status(200).json({ message: 'ፈተናው በተሳካ ሁኔታ ተሰርዟል!' });
+    } catch (err)  {
+        res.status(500).json({ error: err.message });
+    }
+});
 module.exports = router;
