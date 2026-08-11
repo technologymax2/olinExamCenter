@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://olinexamcenter.onrender.com';
 
@@ -8,6 +9,7 @@ function StudentDashboard() {
   const [exams, setExams] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   // ቶከኑን ከ localStorage ማግኘት
   const getAuthHeader = () => {
@@ -20,6 +22,12 @@ function StudentDashboard() {
     window.location.href = '/login';
   };
 
+
+  const handleStartExam = (examId) => {
+  navigate(`/student/exam/${examId}`);
+};
+
+  
   useEffect(() => {
     // Fetching contents and exams with authorization header
     const fetchStudentData = async () => {
