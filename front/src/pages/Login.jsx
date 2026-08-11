@@ -37,7 +37,7 @@ function Login() {
       if (role === 'admin') {
         navigate('/admin');
       } else if (role === 'hr') {
-        navigate('/admin'); // 👈 ኤችአር (HR) ወደ አድሚን ዳሽቦርድ እንዲገባ ተደርጓል (ወይም የራሱ ገጽ ካለ መቀየር ይቻላል)
+        navigate('/hr'); // 👈 ኤችአር (HR) በቀጥታ ወደ የራሱ ገጽ (/hr) እንዲሄድ ተደርጓል
       } else if (role === 'teacher') {
         navigate('/teacher');
       } else if (role === 'student') {
