@@ -7,7 +7,7 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import Login from './pages/Login';
 
-// 1. ጥበቃ የሚያደርግ ኮምፖነንት (Protected Route Component)
+// ጥበቃ የሚያደርግ ኮምፖነንት (Protected Route Component)
 function ProtectedRoute({ children, allowedRole }) {
   const token = localStorage.getItem('token');
   const userRole = localStorage.getItem('userRole');
@@ -51,13 +51,12 @@ function App() {
     <Router>
       <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-800">
         
-        {/* Routes Container with Protected Routes */}
+        {/* Routes Container */}
         <main className="flex-1">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             
-            {/* Protected Routes for Admin, Teacher, and Student */}
             <Route 
               path="/admin" 
               element={
