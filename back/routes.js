@@ -146,8 +146,18 @@ router.put('/users/reset-password-with-approval', async (req, res) => {
 });
 
 // ==========================================
-// QUESTION BANK ROUTES (Single & Bulk Add)
+// QUESTION BANK ROUTES (Fetch, Single & Bulk Add)
 // ==========================================
+
+// GET: Fetch all questions from the question bank
+router.get('/admin/question-bank', async (req, res) => {
+    try {
+        const questions = await QuestionBank.find().sort({ createdAt: -1 });
+        res.status(200).json(questions);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // Add a single question manually
 router.post('/admin/question-bank/add', async (req, res) => {
@@ -179,48 +189,60 @@ router.post('/admin/question-bank/add', async (req, res) => {
 // Bulk add/parse questions from pasted text
 router.post('/admin/question-bank/bulk-add', async (req, res) => {
   try {
-    // Supports both direct array payload or rawText payload from various handlers
     const { questions, rawText, subject } = req.body;
-
     let parsedQuestions = [];
 
     if (questions && Array.isArray(questions)) {
       parsedQuestions = questions;
     } else if (rawText) {
       let cleanedText = rawText
-        .replace(/🎓[^\n]*/g, '')            
-        .replace(/advertisement/gi, '')           
+        .replace(/🎓[^\n]*/g, '')          
+        .replace(/advertisement/gi, '')          
         .replace(/View\s*Answer/gi, '')          
         .replace(/FoodAnswer:/gi, 'Answer:');     
 
+      // Split blocks by question numbers (e.g., 1., 2., etc.)
       const blocks = cleanedText
-        .split(/(?=\n?\d+[\.\)]\s)/)
+        .split(/(?=\b\d+[\.\)]\s)/)
         .filter(b => b.trim().length > 0);
 
       for (let block of blocks) {
         try {
-          const qMatch = block.match(/^\d+[\.\)]\s*(.*?)(?=\s*a\))/s);
-          if (!qMatch) continue;
-          const questionText = qMatch[1].trim();
+          // Extract question text and options dynamically
+          const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+          if (lines.length === 0) continue;
 
-          const optA = block.match(/a\)\s*(.*?)(?=\s*b\))/s);
-          const optB = block.match(/b\)\s*(.*?)(?=\s*c\))/s);
-          const optC = block.match(/c\)\s*(.*?)(?=\s*d\))/s);
-          const optD = block.match(/d\)\s*(.*?)(?=\s*Answer:|\n\n|$)/s);
+          let questionText = lines[0].replace(/^\d+[\.\)]\s*/, '');
+          let optA = '', optB = '', optC = '', optD = '';
+          let correctAnswer = 'A';
+          let explanation = '';
 
-          const ansMatch = block.match(/Answer:\s*([a-dA-D])/i);
-          const expMatch = block.match(/Explanation:\s*(.*?)(?=\n\d+[\.\)]|$)/s);
+          for (let i = 1; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.toLowerCase().startsWith('a)')) optA = line.replace(/^a\)\s*/i, '');
+            else if (line.toLowerCase().startsWith('b)')) optB = line.replace(/^b\)\s*/i, '');
+            else if (line.toLowerCase().startsWith('c)')) optC = line.replace(/^c\)\s*/i, '');
+            else if (line.toLowerCase().startsWith('d)')) optD = line.replace(/^d\)\s*/i, '');
+            else if (line.toLowerCase().startsWith('answer:')) {
+              const match = line.match(/answer:\s*([a-d])/i);
+              if (match) correctAnswer = match[1].toUpperCase();
+            } else if (line.toLowerCase().startsWith('explanation:')) {
+              explanation = line.replace(/^explanation:\s*/i, '');
+            } else if (explanation) {
+              explanation += ' ' + line;
+            }
+          }
 
-          if (qMatch && optA && optB && optC && optD && ansMatch) {
+          if (questionText && optA && optB) {
             parsedQuestions.push({
               subject: subject || 'General',
-              questionText: questionText,
-              optionA: optA[1].trim(),
-              optionB: optB[1].trim(),
-              optionC: optC[1].trim(),
-              optionD: optD[1].trim(),
-              correctAnswer: ansMatch[1].toUpperCase(),
-              explanation: expMatch ? expMatch[1].trim() : ''
+              questionText,
+              optionA: optA,
+              optionB: optB,
+              optionC: optC,
+              optionD: optD,
+              correctAnswer,
+              explanation
             });
           }
         } catch (err) {
@@ -462,19 +484,6 @@ router.post('/exams/:id/submit', async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
-});     
+});      
 
-// ==========================================
-// QUESTION BANK ROUTES (Fetch, Single & Bulk Add)
-// ==========================================
-
-// 1. GET: Fetch all questions from the question bank
-router.get('/admin/question-bank', async (req, res) => {
-    try {
-        const questions = await QuestionBank.find().sort({ createdAt: -1 });
-        res.status(200).json(questions);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 module.exports = router;
