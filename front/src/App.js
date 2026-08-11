@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 
 // የ ዳሽቦርድ እና የመግቢያ ገጾች
@@ -46,92 +46,11 @@ function Home() {
   );
 }
 
-function NavigationBar() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState('');
-
-  // ቶከኑን እና ሮሉን በመፈተሽ ሁኔታውን ማስተካከል
-  useEffect(() => {
-    const checkAuth = () => {
-      const token = localStorage.getItem('token');
-      const role = localStorage.getItem('userRole');
-      setIsLoggedIn(!!token);
-      setUserRole(role || '');
-    };
-
-    checkAuth();
-    window.addEventListener('storage', checkAuth);
-    return () => window.removeEventListener('storage', checkAuth);
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userRole');
-    setIsLoggedIn(false);
-    setUserRole('');
-    alert('ከአካውንቱ በተሳካ ሁኔታ ወጥተዋል!');
-    window.location.href = '/login';
-  };
-
-  return (
-    <nav className="bg-[#123758] text-white shadow-md sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center gap-2">
-          
-          {/* Logo / Title */}
-          <div className="flex-shrink-0 flex items-center">
-            <Link to="/" className="text-base sm:text-xl font-extrabold text-[#d4af37] tracking-wider truncate">
-              Max Technology
-            </Link>
-          </div>
-
-          {/* Navigation Links & Actions (Always visible, scrollable if screen is too small) */}
-          <div className="flex items-center space-x-4 overflow-x-auto py-2 no-scrollbar">
-            <Link to="/" className="hover:text-[#d4af37] font-medium transition whitespace-nowrap">Home</Link>
-            
-            {/* ዳሽቦርዶቹ የሚታዩት ተጠቃሚው ገብቶ ከሆነ ብቻ ነው */}
-            {isLoggedIn && userRole === 'admin' && (
-              <Link to="/admin" className="hover:text-[#d4af37] font-medium transition whitespace-nowrap">Admin</Link>
-            )}
-            {isLoggedIn && userRole === 'teacher' && (
-              <Link to="/teacher" className="hover:text-[#d4af37] font-medium transition whitespace-nowrap">Teacher</Link>
-            )}
-            {isLoggedIn && userRole === 'student' && (
-              <Link to="/student" className="hover:text-[#d4af37] font-medium transition whitespace-nowrap">Student</Link>
-            )}
-            
-            {/* Conditional Login/Logout Button */}
-            {isLoggedIn ? (
-              <button 
-                onClick={handleLogout}
-                className="bg-red-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-red-700 transition shadow text-sm whitespace-nowrap"
-              >
-                Logout
-              </button>
-            ) : (
-              <Link 
-                to="/login" 
-                className="bg-[#d4af37] text-[#123758] px-3 py-1.5 rounded-lg font-bold hover:bg-amber-400 transition text-sm whitespace-nowrap"
-              >
-                Login
-              </Link>
-            )}
-          </div>
-
-        </div>
-      </div>
-    </nav>
-  );
-}
-
 function App() {
   return (
     <Router>
       <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-800">
         
-        {/* Navbar Component */}
-        <NavigationBar />
-
         {/* Routes Container with Protected Routes */}
         <main className="flex-1">
           <Routes>
