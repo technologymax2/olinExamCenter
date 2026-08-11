@@ -443,14 +443,12 @@ router.put('/admin/change-password', async (req, res) => {
     }
 });
 
-
 // Get specific exam and questions
 router.get('/exams/:id', async (req, res) => {
     try {
         const exam = await Exam.findById(req.params.id);
         if (!exam) return res.status(404).json({ error: 'ፈተናው አልተገኘም' });
 
-        // Fetch related questions from QuestionBank based on subject or specific criteria
         const questions = await QuestionBank.find({ subject: exam.subject }).limit(20); 
         
         res.json({ exam, questions });
@@ -462,7 +460,7 @@ router.get('/exams/:id', async (req, res) => {
 // Submit exam answers & grade automatically
 router.post('/exams/:id/submit', async (req, res) => {
     try {
-        const { answers } = req.body; // { questionId: 'A', ... }
+        const { answers } = req.body; 
         let score = 0;
         let total = Object.keys(answers).length;
 
@@ -486,24 +484,31 @@ router.post('/exams/:id/submit', async (req, res) => {
     }
 });      
 
+// ==========================================
+// QUESTION BANK DELETE ROUTES (የተስተካከለ)
+// ==========================================
 
-// Delete a single question
-router.delete('/api/admin/question-bank/:id', verifyAdminToken, async (req, res) => {
+// 1. ሁሉንም ጥያቄዎች ማጥፊያ ራውት (ከ :id በላይ መሆን አለበት!)
+router.delete('/admin/question-bank/all', async (req, res) => {
   try {
-    await Question.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Question deleted successfully' });
+    await QuestionBank.deleteMany({});
+    res.status(200).json({ message: 'ሁሉም ጥያቄዎች በተሳካ ሁኔታ ተሰርዘዋል!' });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete question' });
+    res.status(500).json({ error: 'ሁሉንም ጥያቄዎች በመሰረዝ ላይ ስህተት ተፈጥሯል' });
   }
 });
 
-// Delete all questions
-router.delete('/api/admin/question-bank/all', verifyAdminToken, async (req, res) => {
+// 2. ነጠላ ጥያቄ በ ID ማጥፊያ ራውት
+router.delete('/admin/question-bank/:id', async (req, res) => {
   try {
-    await Question.deleteMany({});
-    res.json({ message: 'All questions deleted successfully' });
+    const deletedQuestion = await QuestionBank.findByIdAndDelete(req.params.id);
+    if (!deletedQuestion) {
+      return res.status(404).json({ error: 'ጥያቄው አልተገኘም!' });
+    }
+    res.status(200).json({ message: 'ጥያቄው በተሳካ ሁኔታ ተሰርዟል!' });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete all questions' });
+    res.status(500).json({ error: 'ጥያቄውን በመሰረዝ ላይ ስህተት ተፈጥሯል' });
   }
 });
+
 module.exports = router;
