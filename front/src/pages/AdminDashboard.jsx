@@ -92,7 +92,7 @@ function AdminDashboard() {
     }
   };
 
-  // 1. ጥያቄዎችን ወደ Exam Bank መጫኛ
+  // 1. ጥያቄዎችን ወደ Exam Bank መጫኛ (Single or File upload configuration)
   const handleQuestionBankSubmit = () => {
     const token = localStorage.getItem('token');
     if (bankFile) {
@@ -108,10 +108,17 @@ function AdminDashboard() {
         })
         .catch(err => alert(err.response?.data?.error || 'ስህተት ተፈጥሯል'));
     } else {
+      // Validation check for single question addition
+      if (!questionForm.subject || !questionForm.questionText || !questionForm.optionA || !questionForm.optionB) {
+        alert('እባክዎ ቢያንስ ትምህርት ዓይነትን፣ ጥያቄውን እና አማራጮችን ይሙሉ!');
+        return;
+      }
+
       axios.post(`${API_URL}/api/admin/question-bank/add`, questionForm, getAuthHeader())
         .then(() => {
-          alert('ጥያቄው ወደ ፈተና ባንክ ተመዝግቧል!');
+          alert('ጥያቄው ወደ ፈተና ባንክ በተሳካ ሁኔታ ተመዝግቧል!');
           setQuestionForm({ subject: '', questionText: '', optionA: '', optionB: '', optionC: '', optionD: '', correctAnswer: 'A' });
+          setOpenQuestionBankModal(false);
         })
         .catch(err => alert(err.response?.data?.error || 'ስህተት ተፈጥሯል'));
     }
@@ -504,8 +511,6 @@ function AdminDashboard() {
           </div>
         </div>
       )}
-
-      {/* Password & Approval Modals remain standard */}
     </div>
   );
 }
