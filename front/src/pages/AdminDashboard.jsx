@@ -7,7 +7,7 @@ function AdminDashboard() {
   const [stats, setStats] = useState({ totalStudents: 0, totalTeachers: 0, totalExams: 0 });
   const [openUserModal, setOpenUserModal] = useState(false);
   const [openExamModal, setOpenExamModal] = useState(false);
-  const [openQuestionBankModal, setOpenQuestionBankModal] = useState(false); // አዲስ የጥያቄ ባንክ ሞዳል
+  const [openQuestionBankModal, setOpenQuestionBankModal] = useState(false);
   const [openPasswordModal, setOpenPasswordModal] = useState(false);
   const [openApprovalModal, setOpenApprovalModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -15,7 +15,6 @@ function AdminDashboard() {
   const [userForm, setUserForm] = useState({ name: '', email: '', role: 'student', password: '' });
   const [excelFile, setExcelFile] = useState(null);
   
-  // የፈተና መርሐ-ግብር እና የጥያቄ ብዛት (NumberOfQuestions) ማስተካከያ
   const [examForm, setExamForm] = useState({ 
     title: '', 
     subject: '', 
@@ -26,7 +25,6 @@ function AdminDashboard() {
     description: '' 
   });
 
-  // የጥያቄ ባንክ ፎርም (ለግለሰብ ጥያቄዎች ምዝገባ ወይም ፋይል)
   const [questionForm, setQuestionForm] = useState({
     subject: '',
     questionText: '',
@@ -34,8 +32,12 @@ function AdminDashboard() {
     optionB: '',
     optionC: '',
     optionD: '',
-    correctAnswer: 'A'
+    correctAnswer: 'A',
+    explanation: ''
   });
+
+  // State for bulk pasted text questions
+  const [bulkTextQuestions, setBulkTextQuestions] = useState('');
   const [bankFile, setBankFile] = useState(null);
 
   const [passwordForm, setPasswordForm] = useState({ email: '', newPassword: '' });
@@ -92,10 +94,84 @@ function AdminDashboard() {
     }
   };
 
-  // 1. ጥያቄዎችን ወደ Exam Bank መጫኛ (Single or File upload configuration)
+  // Helper function to parse pasted text block into structured questions array
+  const parseBulkQuestions = (text) => {
+    // Basic block splitter based on question numbers (e.g., "1. ", "2. ")
+    const rawBlocks = text.split(/\n(?=\d+\.\s+)/);
+    const parsed = [];
+
+    for (const block of rawBlocks) {
+      if (!block.trim()) continue;
+
+      try {
+        const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+        let qText = '';
+        let optA = '', optB = '', optC = '', optD = '';
+        let correct = 'A';
+        let expl = '';
+
+        let mode = 'question';
+        for (let line of lines) {
+          // Strip starting number if present in first line
+          if (mode === 'question') {
+            const cleanedLine = line.replace(/^\d+\.\s*/, '');
+            qText += (qText ? ' ' : '') + cleanedLine;
+            if (line.match(/^[a-d]\)/i)) {
+              mode = 'options';
+            }
+          }
+          
+          if (line.toLowerCase().startsWith('a)')) optA = line.replace(/^a\)\s*/i, '');
+          else if (line.toLowerCase().startsWith('b)')) optB = line.replace(/^b\)\s*/i, '');
+          else if (line.toLowerCase().startsWith('c)')) optC = line.replace(/^c\)\s*/i, '');
+          else if (line.toLowerCase().startsWith('d)')) optD = line.replace(/^d\)\s*/i, '');
+          else if (line.toLowerCase().startsWith('answer:')) {
+            const match = line.match(/answer:\s*([a-d])/i);
+            if (match) correct = match[1].toUpperCase();
+          } else if (line.toLowerCase().startsWith('explanation:')) {
+            expl = line.replace(/^explanation:\s*/i, '');
+          } else if (expl) {
+            expl += ' ' + line;
+          }
+        }
+
+        if (qText && optA && optB) {
+          parsed.push({
+            subject: questionForm.subject || 'General',
+            questionText: qText,
+            optionA: optA,
+            optionB: optB,
+            optionC: optC,
+            optionD: optD,
+            correctAnswer: correct,
+            explanation: expl
+          });
+        }
+      } catch (e) {
+        console.error('Error parsing block:', e);
+      }
+    }
+    return parsed;
+  };
+
   const handleQuestionBankSubmit = () => {
     const token = localStorage.getItem('token');
-    if (bankFile) {
+    
+    if (bulkTextQuestions.trim()) {
+      const questionsArray = parseBulkQuestions(bulkTextQuestions);
+      if (questionsArray.length === 0) {
+        alert('ጥያቄዎቹን በትክክለኛ ቅርጸት ማንበብ አልተቻለም። እባክዎ ፎርማቱን ያረጋግጡ!');
+        return;
+      }
+
+      axios.post(`${API_URL}/api/admin/question-bank/bulk-add`, { questions: questionsArray }, getAuthHeader())
+        .then(() => {
+          alert(`${questionsArray.length} ጥያቄዎች ወደ ፈተና ባንክ ተጭነዋል!`);
+          setOpenQuestionBankModal(false);
+          setBulkTextQuestions('');
+        })
+        .catch(err => alert(err.response?.data?.error || 'ስህተት ተፈጥሯል'));
+    } else if (bankFile) {
       const formData = new FormData();
       formData.append('file', bankFile);
       axios.post(`${API_URL}/api/admin/question-bank/upload`, formData, {
@@ -108,7 +184,6 @@ function AdminDashboard() {
         })
         .catch(err => alert(err.response?.data?.error || 'ስህተት ተፈጥሯል'));
     } else {
-      // Validation check for single question addition
       if (!questionForm.subject || !questionForm.questionText || !questionForm.optionA || !questionForm.optionB) {
         alert('እባክዎ ቢያንስ ትምህርት ዓይነትን፣ ጥያቄውን እና አማራጮችን ይሙሉ!');
         return;
@@ -117,14 +192,13 @@ function AdminDashboard() {
       axios.post(`${API_URL}/api/admin/question-bank/add`, questionForm, getAuthHeader())
         .then(() => {
           alert('ጥያቄው ወደ ፈተና ባንክ በተሳካ ሁኔታ ተመዝግቧል!');
-          setQuestionForm({ subject: '', questionText: '', optionA: '', optionB: '', optionC: '', optionD: '', correctAnswer: 'A' });
+          setQuestionForm({ subject: '', questionText: '', optionA: '', optionB: '', optionC: '', optionD: '', correctAnswer: 'A', explanation: '' });
           setOpenQuestionBankModal(false);
         })
         .catch(err => alert(err.response?.data?.error || 'ስህተት ተፈጥሯል'));
     }
   };
 
-  // 2. ፈተናውን በሰአሌ እና በቁጥር ልክ ከባንክ በማውጣት ማቀናበር
   const handleExamSubmit = () => {
     const token = localStorage.getItem('token');
     axios.post(`${API_URL}/api/admin/exams`, examForm, {
@@ -278,37 +352,13 @@ function AdminDashboard() {
               <h4 className="text-3xl font-bold text-amber-600 mt-1">{stats.totalExams}</h4>
             </div>
           </div>
-
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
-            <h4 className="text-lg font-bold text-[#123758]">ዋና ዋና አስተዳደራዊ ስራዎች</h4>
-            <div className="flex flex-wrap gap-4">
-              <button 
-                onClick={() => setOpenQuestionBankModal(true)}
-                className="bg-blue-700 hover:bg-blue-800 text-white font-medium px-5 py-2.5 rounded-lg shadow transition text-sm"
-              >
-                📚 ጥያቄዎችን ወደ ባንክ አስገባ
-              </button>
-              <button 
-                onClick={() => setOpenExamModal(true)}
-                className="bg-amber-600 hover:bg-amber-700 text-white font-medium px-5 py-2.5 rounded-lg shadow transition text-sm"
-              >
-                📝 የፈተና መርሐ-ግብር እና የጥያቄ ገደብ አውጣ
-              </button>
-              <button 
-                onClick={() => setOpenUserModal(true)}
-                className="bg-[#123758] hover:bg-blue-900 text-white font-medium px-5 py-2.5 rounded-lg shadow transition text-sm"
-              >
-                ተማሪ/መምህር/አድሚን መዝግብ
-              </button>
-            </div>
-          </div>
         </div>
       </main>
 
       {/* 1. Question Bank Modal (ጥያቄዎችን ወደ ባንክ መጫኛ) */}
       {openQuestionBankModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden">
             <div className="bg-blue-700 text-white px-6 py-4 flex justify-between items-center">
               <h3 className="font-bold text-lg">የፈተና ጥያቄዎች ባንክ (Exam Bank)</h3>
               <button onClick={() => setOpenQuestionBankModal(false)} className="text-gray-100 hover:text-white">✕</button>
@@ -322,9 +372,24 @@ function AdminDashboard() {
                   value={questionForm.subject} 
                   onChange={e => setQuestionForm({...questionForm, subject: e.target.value})} 
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  placeholder="ምሳሌ፦ Mathematics"
+                  placeholder="ምሳሌ፦ Nutrition / Mathematics"
                 />
               </div>
+
+              {/* Bulk Text Paste Option */}
+              <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-2">
+                <label className="block text-xs font-bold text-blue-900 mb-1">📋 ብዙ ጥያቄዎችን በቀጥታ ፔስት (Paste) አድርግ</label>
+                <p className="text-xs text-gray-500">እንደ 1. ... a) ... b) ... Answer: ... Explanation: ያሉት ጽሁፎችን በቀጥታ እዚህ ጋር መለጠፍ ይችላሉ።</p>
+                <textarea 
+                  rows="6"
+                  value={bulkTextQuestions} 
+                  onChange={e => setBulkTextQuestions(e.target.value)} 
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white text-xs font-mono"
+                  placeholder="1. Which of the following is not a macronutrient?&#10;a) Proteins&#10;...&#10;Answer: d&#10;Explanation: ..."
+                />
+              </div>
+
+              <div className="text-center text-xs font-semibold text-gray-400">ወይም አንድ ጥያቄ ብቻ በእጅ ለመሙላት</div>
 
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">የጥያቄው ጽሁፍ</label>
@@ -344,169 +409,26 @@ function AdminDashboard() {
                 <input type="text" placeholder="አማራጭ D" value={questionForm.optionD} onChange={e => setQuestionForm({...questionForm, optionD: e.target.value})} className="px-3 py-1.5 border rounded text-sm" />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">ትክክለኛ መልስ</label>
-                <select value={questionForm.correctAnswer} onChange={e => setQuestionForm({...questionForm, correctAnswer: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-white">
-                  <option value="A">A</option>
-                  <option value="B">B</option>
-                  <option value="C">C</option>
-                  <option value="D">D</option>
-                </select>
-              </div>
-
-              <div className="border-t pt-3">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">ወይም ብዙ ጥያቄዎችን በፋይል ጫን (Excel/JSON)</label>
-                <input 
-                  type="file" 
-                  onChange={e => setBankFile(e.target.files[0])} 
-                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">ትክክለኛ መልስ</label>
+                  <select value={questionForm.correctAnswer} onChange={e => setQuestionForm({...questionForm, correctAnswer: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-white">
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                    <option value="D">D</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">ማብራሪያ (Explanation)</label>
+                  <input type="text" value={questionForm.explanation} onChange={e => setQuestionForm({...questionForm, explanation: e.target.value})} className="w-full px-3 py-2 border rounded-lg" placeholder="የመልሱ ማብራሪያ..." />
+                </div>
               </div>
             </div>
 
             <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 border-t">
               <button onClick={() => setOpenQuestionBankModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg text-sm font-medium">ይቅር</button>
               <button onClick={handleQuestionBankSubmit} className="px-5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-sm font-medium shadow">ወደ ባንክ አስቀምጥ</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 2. Exam Schedule & Question Limit Modal (መርሃ-ግብር እና የጥያቄ ብዛት ማቀናበሪያ) */}
-      {openExamModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
-            <div className="bg-amber-600 text-white px-6 py-4 flex justify-between items-center">
-              <h3 className="font-bold text-lg">የፈተና መርሐ-ግብር እና የጥያቄ ገደብ ማቀናበሪያ</h3>
-              <button onClick={() => setOpenExamModal(false)} className="text-gray-100 hover:text-white">✕</button>
-            </div>
-            
-            <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">የፈተና ርዕስ</label>
-                <input 
-                  type="text" 
-                  value={examForm.title} 
-                  onChange={e => setExamForm({...examForm, title: e.target.value})} 
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-600 focus:outline-none"
-                  placeholder="ምሳሌ፦ የሂሳብ የመጨረሻ ፈተና"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">ትምህርት ዓይነት (ከባንክ ጋር የሚገናኝበት)</label>
-                <input 
-                  type="text" 
-                  value={examForm.subject} 
-                  onChange={e => setExamForm({...examForm, subject: e.target.value})} 
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-600 focus:outline-none"
-                  placeholder="Mathematics"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">የፈተና ቀን እና ሰዓት</label>
-                  <input 
-                    type="datetime-local" 
-                    value={examForm.examDate} 
-                    onChange={e => setExamForm({...examForm, examDate: e.target.value})} 
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-600 focus:outline-none text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">ውጤት የሚገለጽበት ቀን</label>
-                  <input 
-                    type="datetime-local" 
-                    value={examForm.resultReleaseDate} 
-                    onChange={e => setExamForm({...examForm, resultReleaseDate: e.target.value})} 
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-600 focus:outline-none text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">የቆይታ ጊዜ (በደቂቃ)</label>
-                  <input 
-                    type="number" 
-                    value={examForm.duration} 
-                    onChange={e => setExamForm({...examForm, duration: e.target.value})} 
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-600 focus:outline-none"
-                    placeholder="60"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">ለተማሪው የሚፈቀደው የጥያቄ ብዛት (Number of Questions)</label>
-                  <input 
-                    type="number" 
-                    value={examForm.numberOfQuestions} 
-                    onChange={e => setExamForm({...examForm, numberOfQuestions: e.target.value})} 
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-600 focus:outline-none"
-                    placeholder="10"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">መግለጫ / መመሪያ (Description)</label>
-                <textarea 
-                  rows="2"
-                  value={examForm.description} 
-                  onChange={e => setExamForm({...examForm, description: e.target.value})} 
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-600 focus:outline-none"
-                  placeholder="ፈተናውን ከመጀመርዎ በፊት መመሪያውን ያንብቡ..."
-                />
-              </div>
-            </div>
-
-            <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 border-t">
-              <button onClick={() => setOpenExamModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg text-sm font-medium">ይቅር</button>
-              <button onClick={handleExamSubmit} className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium shadow">መርሃ-ግብሩን አውጣ (Publish Schedule)</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* User Registration Modal */}
-      {openUserModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="bg-[#123758] text-white px-6 py-4 flex justify-between items-center">
-              <h3 className="font-bold text-lg">አዲስ ተጠቃሚ ወይም አድሚን መዝግብ</h3>
-              <button onClick={() => setOpenUserModal(false)} className="text-gray-300 hover:text-white">✕</button>
-            </div>
-            
-            <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">ሙሉ ስም</label>
-                <input type="text" value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} className="w-full px-4 py-2 border rounded-lg" placeholder="ሙሉ ስም" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">ኢሜል</label>
-                <input type="email" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} className="w-full px-4 py-2 border rounded-lg" placeholder="example@mail.com" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">የሚስጥር ቁጥር (Password)</label>
-                <input type="password" value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} className="w-full px-4 py-2 border rounded-lg" placeholder="******" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">የተጠቃሚው ሚና (Role)</label>
-                <select value={userForm.role} onChange={e => setUserForm({...userForm, role: e.target.value})} className="w-full px-4 py-2 border rounded-lg bg-white">
-                  <option value="student">ተማሪ (Student)</option>
-                  <option value="teacher">መምህር (Teacher)</option>
-                  <option value="admin">አስተዳዳሪ (Admin)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">ወይም ከኤክሴል ፋይል ጫን</label>
-                <input type="file" accept=".xlsx, .xls" onChange={e => setExcelFile(e.target.files[0])} className="w-full text-sm text-gray-500" />
-              </div>
-            </div>
-
-            <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 border-t">
-              <button onClick={() => setOpenUserModal(false)} className="px-4 py-2 text-gray-600 text-sm">ይቅር</button>
-              <button onClick={handleUserSubmit} className="px-5 py-2 bg-[#123758] text-white rounded-lg text-sm shadow">መዝግብ</button>
             </div>
           </div>
         </div>
