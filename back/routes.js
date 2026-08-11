@@ -632,4 +632,40 @@ router.delete('/admin/exams/:id', async (req, res) => {
     }
 });
 
+
+// 1. በአድሚን ስታቲስቲክስ ውስጥ የ HR ሰራተኞችን ቁጥር ማሳየት
+router.get('/admin/stats', async (req, res) => {
+    try {
+        const totalStudents = await Student.countDocuments();
+        const totalTeachers = await User.countDocuments({ role: 'teacher' });
+        const totalHR = await User.countDocuments({ role: 'hr' }); // 👈 የ HR ሰራተኞች ብዛት
+        const totalExams = await Exam.countDocuments();
+        
+        res.status(200).json({ totalStudents, totalTeachers, totalHR, totalExams });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. አድሚኑ ማንኛውንም ተጠቃሚ (student, teacher, hr, admin) መመዝገብ እንዲችል
+router.post('/admin/users', async (req, res) => {
+    try {
+        const { name, email, password, role } = req.body;
+        
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password || '123456', salt);
+
+        const newUser = new User({
+            name,
+            email,
+            password: hashedPassword,
+            role: role || 'student' // 'student', 'teacher', 'hr', 'admin' መሆን ይችላል
+        });
+
+        await newUser.save();
+        res.status(201).json({ message: 'ተጠቃሚው (ሰራተኛው/ተማሪው) በተሳካ ሁኔታ ተመዝግቧል!' });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
 module.exports = router;
