@@ -511,4 +511,25 @@ router.delete('/admin/question-bank/:id', async (req, res) => {
   }
 });
 
+
+// በሰጡት Subject ስም መሰረት ጥያቄዎችን በሙሉ ለማጥፋት
+router.delete('/question-bank/subject/:subject', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const subjectName = decodeURIComponent(req.params.subject);
+    
+    // ትምህርቱን በትክክል ለማግኘት (Case-insensitive እንዲሆን regex መጠቀም ይቻላል)
+    const result = await QuestionBank.deleteMany({ 
+      subject: { $regex: new RegExp(`^${subjectName}$`, 'i') } 
+    });
+
+    res.status(200).json({ 
+      message: `የ "${subjectName}" ትምህርት ጥያቄዎች በሙሉ ተሰርዘዋል!`,
+      deletedCount: result.deletedCount 
+    });
+  } catch (err) {
+    console.error('Error deleting questions by subject:', err);
+    res.status(500).json({ error: 'ጥያቄዎችን በመሰረዝ ላይ ስህተት ተፈጥሯል' });
+  }
+});
+
 module.exports = router;
