@@ -488,7 +488,7 @@ router.post('/exams/:id/submit', async (req, res) => {
 // QUESTION BANK DELETE ROUTES (የተስተካከለ)
 // ==========================================
 
-// 1. ሁሉንም ጥያቄዎች ማጥፊያ ራውት (ከ :id በላይ መሆን አለበት!)
+// 1. ሁሉንም ጥያቄዎች ማጥፊያ ራውት
 router.delete('/admin/question-bank/all', async (req, res) => {
   try {
     await QuestionBank.deleteMany({});
@@ -498,26 +498,11 @@ router.delete('/admin/question-bank/all', async (req, res) => {
   }
 });
 
-// 2. ነጠላ ጥያቄ በ ID ማጥፊያ ራውት
-router.delete('/admin/question-bank/:id', async (req, res) => {
-  try {
-    const deletedQuestion = await QuestionBank.findByIdAndDelete(req.params.id);
-    if (!deletedQuestion) {
-      return res.status(404).json({ error: 'ጥያቄው አልተገኘም!' });
-    }
-    res.status(200).json({ message: 'ጥያቄው በተሳካ ሁኔታ ተሰርዟል!' });
-  } catch (err) {
-    res.status(500).json({ error: 'ጥያቄውን በመሰረዝ ላይ ስህተት ተፈጥሯል' });
-  }
-});
-
-
-// በሰጡት Subject ስም መሰረት ጥያቄዎችን በሙሉ ለማጥፋት
-router.delete('/question-bank/subject/:subject', verifyToken, isAdmin, async (req, res) => {
+// 2. በሰጡት Subject ስም መሰረት ጥያቄዎችን በሙሉ ለማጥፋት (የቀድሞው 404 ስህተት ማስተካከያ)
+router.delete('/admin/question-bank/subject/:subject', async (req, res) => {
   try {
     const subjectName = decodeURIComponent(req.params.subject);
     
-    // ትምህርቱን በትክክል ለማግኘት (Case-insensitive እንዲሆን regex መጠቀም ይቻላል)
     const result = await QuestionBank.deleteMany({ 
       subject: { $regex: new RegExp(`^${subjectName}$`, 'i') } 
     });
@@ -529,6 +514,19 @@ router.delete('/question-bank/subject/:subject', verifyToken, isAdmin, async (re
   } catch (err) {
     console.error('Error deleting questions by subject:', err);
     res.status(500).json({ error: 'ጥያቄዎችን በመሰረዝ ላይ ስህተት ተፈጥሯል' });
+  }
+});
+
+// 3. ነጠላ ጥያቄ በ ID ማጥፊያ ራውት
+router.delete('/admin/question-bank/:id', async (req, res) => {
+  try {
+    const deletedQuestion = await QuestionBank.findByIdAndDelete(req.params.id);
+    if (!deletedQuestion) {
+      return res.status(404).json({ error: 'ጥያቄው አልተገኘም!' });
+    }
+    res.status(200).json({ message: 'ጥያቄው በተሳካ ሁኔታ ተሰርዟል!' });
+  } catch (err) {
+    res.status(500).json({ error: 'ጥያቄውን በመሰረዝ ላይ ስህተት ተፈጥሯል' });
   }
 });
 
