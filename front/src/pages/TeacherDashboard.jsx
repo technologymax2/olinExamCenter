@@ -14,8 +14,12 @@ function TeacherDashboard() {
     return { headers: { Authorization: `Bearer ${token}` } };
   };
 
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = '/login';
+  };
+
   const handleSubmit = () => {
-    // ይዘቱን ወደ ሰርቨር ሲልክ ቶከኑን አብሮ መላክ
     axios.post(`${API_URL}/api/contents`, contentForm, getAuthHeader())
       .then(() => {
         alert('ተለቋል!');
@@ -25,7 +29,6 @@ function TeacherDashboard() {
       .catch(err => {
         console.error('Error posting content:', err);
         if (err.response?.status === 401) {
-          // ቶከኑ ካለፈ ወይም ትክክል ካልሆነ ወደ ሎጊን ማዞር
           localStorage.clear();
           window.location.href = '/login';
         } else {
@@ -43,9 +46,11 @@ function TeacherDashboard() {
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="focus:outline-none">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
           </button>
-          <span className="font-bold text-lg text-[#d4af37]">Teacher Portal</span>
+          <span className="font-bold text-lg text-[#d4af37]">Max Technology</span>
         </div>
-        <span className="text-xs font-semibold text-amber-400">EMPOWERING YOUR REACH</span>
+        <button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-md font-semibold transition">
+          Logout
+        </button>
       </header>
 
       {/* Sidebar */}
@@ -54,11 +59,13 @@ function TeacherDashboard() {
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static
       `}>
         <div>
-          <div className="p-6 hidden md:block">
-            <h1 className="text-xl font-extrabold text-[#d4af37]">Teacher Panel</h1>
-            <p className="text-xs text-gray-300 mt-1">Max Technology</p>
+          {/* Sidebar Header - Now visible everywhere or nicely adjusted */}
+          <div className="p-6 border-b border-blue-900/50">
+            <h1 className="text-xl font-extrabold text-[#d4af37]">Max Technology</h1>
+            <p className="text-xs text-gray-300 mt-1">Teacher Panel</p>
           </div>
-          <nav className="mt-6 md:mt-2 px-4 space-y-2">
+
+          <nav className="mt-4 px-4 space-y-2">
             <a href="#dashboard" className="flex items-center space-x-3 p-3 rounded-lg bg-blue-900/50 text-[#d4af37] font-medium transition">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
               <span>ዳሽቦርድ</span>
@@ -73,6 +80,7 @@ function TeacherDashboard() {
             </a>
           </nav>
         </div>
+
         <div className="p-4 text-xs text-center text-gray-400 border-t border-blue-900">
           Max Technology &copy; 2026
         </div>
@@ -84,9 +92,21 @@ function TeacherDashboard() {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        <header className="hidden md:flex items-center justify-between bg-white border-b border-gray-200 px-8 py-4 shadow-sm sticky top-0 z-20">
-          <h2 className="text-xl font-bold text-[#123758]">Max Technology - Teacher Portal</h2>
-          <span className="text-sm font-semibold tracking-wide text-amber-600">EMPOWERING YOUR REACH</span>
+        {/* Desktop Header matching screenshot */}
+        <header className="hidden md:flex items-center justify-between bg-[#123758] border-b border-blue-900 px-8 py-4 shadow-sm sticky top-0 z-20 text-white">
+          <h2 className="text-xl font-extrabold text-[#d4af37]">Max Technology</h2>
+          <div className="flex items-center space-x-6">
+            <nav className="flex items-center space-x-6 text-sm font-semibold">
+              <a href="/home" className="hover:text-[#d4af37] transition">Home</a>
+              <span className="text-[#d4af37]">Teacher</span>
+            </nav>
+            <button 
+              onClick={handleLogout}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition"
+            >
+              Logout
+            </button>
+          </div>
         </header>
 
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
