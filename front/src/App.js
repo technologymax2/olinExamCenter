@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-ro
 // የ ዳሽቦርድ እና የመግቢያ ገጾች
 import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
-import HREmployeeDashboard from './pages/HREmployeeDashboard'; // 1. የ HR ዳሽቦርዱን ማስገባት
+import HREmployeeDashboard from './pages/HREmployeeDashboard'; 
 import Login from './pages/Login';
 import TakeExam from './pages/TakeExam';
 
@@ -29,7 +29,7 @@ function Home() {
     <div className="min-h-[80vh] bg-gray-950 text-white flex items-center justify-center p-4">
       <div className="max-w-2xl w-full text-center space-y-6 bg-gray-900 p-8 sm:p-12 rounded-2xl shadow-lg border border-gray-800">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-blue-400 leading-tight">
-          እንዳკዎ ወደ ማክ ቴክኖሎጂ ማዕከል በደህና መጡ
+          እንኳን ወደ ማክ ቴክኖሎጂ ማዕከል በደህና መጡ
         </h1>
         <p className="text-gray-400 text-base sm:text-lg">
           እባክዎ ለመግባት የሚፈልጉትን ፖርታል ይምረጡ፡
@@ -74,7 +74,7 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            {/* 2. የ HR ሰራተኛው ራውት (Route) እዚህ ተካቷል */}
+            {/* የ HR ሰራተኛው ራውት */}
             <Route 
               path="/hr" 
               element={
