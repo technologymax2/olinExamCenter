@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 
 function HREmployeeDashboard() {
-  const [activeTab, setActiveTab] = useState('students');
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [studentStatus, setStudentStatus] = useState('');
@@ -11,14 +10,14 @@ function HREmployeeDashboard() {
   const [editingStudentId, setEditingStudentId] = useState(null);
   const [selectedIdCard, setSelectedIdCard] = useState(null);
 
-  // 🔹 አዲስ የተጨመሩ ስቴቶች (ለ Bulk Selection እና Academic Year Update)
+  // 🔹 Bulk Selection እና AcademicYear Update ስቴቶች
   const [selectedStudentIds, setSelectedStudentIds] = useState([]);
   const [targetAcademicYear, setTargetAcademicYear] = useState('2ኛ ዓመት');
 
   const IMGBB_API_KEY = "ebd592608f4dba1e8271bec8e920c408";
 
   // የተማሪ መረጃዎችን የያዘው ስቴት
-  const [studentForm, setStudentForm] = useState({
+  const initialFormState = {
     nameAmh: '',
     nameEng: '',
     fatherNameAmh: '',
@@ -28,10 +27,10 @@ function HREmployeeDashboard() {
     birthDate: '',
     age: '',
     studentIdNumber: '',
-    programLevel: 'Degree', // Level, Degree, Master, PhD
-    department: '',          // የትምህርት መስክ / ዲፓርትመንት
-    academicYear: '1ኛ ዓመት',   // ዓመተ ትምህርት
-    semester: '1ኛ ሴሚስተር',    // ሴሚስተር
+    programLevel: 'Degree',
+    department: '',
+    academicYear: '1ኛ ዓመት',
+    semester: '1ኛ ሴሚስተር',
     gradeAmh: '',
     gradeEng: '',
     dateOfIssue: '',
@@ -45,7 +44,9 @@ function HREmployeeDashboard() {
     guardianName: '',
     guardianPhone: '',
     imageUrl: ''
-  });
+  };
+
+  const [studentForm, setStudentForm] = useState(initialFormState);
 
   const FRONTEND_URL = window.location.origin;
 
@@ -118,41 +119,14 @@ function HREmployeeDashboard() {
 
     setStudentStatus(`${selectedStudentIds.length} ተማሪዎች በተሳካ ሁኔታ ወደ ${targetAcademicYear} ተሻሽለዋል!`);
     setErrorMessage('');
-    setSelectedStudentIds([]); // ምርጫውን ባዶ ማድረግ
+    setSelectedStudentIds([]);
   };
 
   const handleEditClick = (student) => {
     setEditingStudentId(student._id);
-    setStudentForm({
-      nameAmh: student.nameAmh || '',
-      nameEng: student.nameEng || '',
-      fatherNameAmh: student.fatherNameAmh || '',
-      grandfatherNameAmh: student.grandfatherNameAmh || '',
-      motherNameAmh: student.motherNameAmh || '',
-      gender: student.gender || 'ወንድ',
-      birthDate: student.birthDate || '',
-      age: student.age || '',
-      studentIdNumber: student.studentIdNumber || '',
-      programLevel: student.programLevel || 'Degree',
-      department: student.department || '',
-      academicYear: student.academicYear || '1ኛ ዓመት',
-      semester: student.semester || '1ኛ ሴሚስተር',
-      gradeAmh: student.gradeAmh || '',
-      gradeEng: student.gradeEng || '',
-      dateOfIssue: student.dateOfIssue || '',
-      expireDate: student.expireDate || '',
-      addressAmh: student.addressAmh || '',
-      addressEng: student.addressEng || '',
-      city: student.city || '',
-      woreda: student.woreda || '',
-      nationality: student.nationality || 'ኢትዮጵያዊ',
-      phoneNumber: student.phoneNumber || '',
-      guardianName: student.guardianName || '',
-      guardianPhone: student.guardianPhone || '',
-      imageUrl: student.imageUrl || ''
-    });
-    setActiveTab('form');
+    setStudentForm({ ...student });
     setErrorMessage('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteStudent = (id) => {
@@ -190,13 +164,7 @@ function HREmployeeDashboard() {
       }
       setLoading(false);
       setEditingStudentId(null);
-      setStudentForm({
-        nameAmh: '', nameEng: '', fatherNameAmh: '', grandfatherNameAmh: '', motherNameAmh: '', gender: 'ወንድ',
-        birthDate: '', age: '', studentIdNumber: '', programLevel: 'Degree', department: '', academicYear: '1ኛ ዓመት',
-        semester: '1ኛ ሴሚስተር', gradeAmh: '', gradeEng: '', dateOfIssue: '', expireDate: '', addressAmh: '',
-        addressEng: '', city: '', woreda: '', nationality: 'ኢትዮጵያዊ', phoneNumber: '', guardianName: '',
-        guardianPhone: '', imageUrl: ''
-      });
+      setStudentForm(initialFormState);
     }, 500);
   };
 
@@ -207,12 +175,12 @@ function HREmployeeDashboard() {
 
         {/* Error / Success Messages Banner */}
         {errorMessage && (
-          <div className="mb-4 p-4 bg-red-600/20 border border-red-500 text-red-400 rounded-xl text-sm font-medium">
+          <div className="mb-4 p-4 bg-red-600/25 border border-red-500 text-red-400 rounded-xl text-sm font-medium">
             ⚠️ {errorMessage}
           </div>
         )}
         {studentStatus && (
-          <div className="mb-4 p-4 bg-green-600/20 border border-green-500 text-green-400 rounded-xl text-sm font-medium">
+          <div className="mb-4 p-4 bg-green-600/25 border border-green-500 text-green-400 rounded-xl text-sm font-medium">
             ✅ {studentStatus}
           </div>
         )}
@@ -347,13 +315,7 @@ function HREmployeeDashboard() {
                     onClick={() => {
                       setEditingStudentId(null);
                       setErrorMessage('');
-                      setStudentForm({
-                        nameAmh: '', nameEng: '', fatherNameAmh: '', grandfatherNameAmh: '', motherNameAmh: '', gender: 'ወንድ',
-                        birthDate: '', age: '', studentIdNumber: '', programLevel: 'Degree', department: '', academicYear: '1ኛ ዓመት',
-                        semester: '1ኛ ሴሚስተር', gradeAmh: '', gradeEng: '', dateOfIssue: '', expireDate: '', addressAmh: '',
-                        addressEng: '', city: '', woreda: '', nationality: 'ኢትዮጵያዊ', phoneNumber: '', guardianName: '',
-                        guardianPhone: '', imageUrl: ''
-                      });
+                      setStudentForm(initialFormState);
                     }} 
                     className="py-3 px-4 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition"
                   >
@@ -369,7 +331,7 @@ function HREmployeeDashboard() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h3 className="text-xl font-bold text-blue-400">📋 የተመዘገቡ ተማሪዎች ዝርዝር</h3>
 
-              {/* 🔹 Bulk Update Controls (የተመረጡትን ዓመት በአንድ ላይ መቀየሪያ ፓነል) */}
+              {/* 🔹 Bulk Update Controls */}
               {studentList.length > 0 && (
                 <div className="flex items-center gap-2 bg-gray-800 p-2 rounded-xl border border-gray-700">
                   <span className="text-xs text-gray-300">የተመረጡትን ወደ፦</span>
@@ -398,7 +360,6 @@ function HREmployeeDashboard() {
             <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="border-b border-gray-800 text-gray-400 text-sm">
-                  {/* 🔹 Select All Checkbox */}
                   <th className="p-3 w-10">
                     <input 
                       type="checkbox" 
@@ -417,7 +378,6 @@ function HREmployeeDashboard() {
               <tbody className="divide-y divide-gray-800 text-sm">
                 {studentList.map((st) => (
                   <tr key={st._id} className="hover:bg-gray-800/50">
-                    {/* 🔹 Individual Row Checkbox */}
                     <td className="p-3">
                       <input 
                         type="checkbox" 
