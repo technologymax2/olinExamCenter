@@ -9,7 +9,7 @@ function HREmployeeDashboard() {
   const [editingStudentId, setEditingStudentId] = useState(null);
   const [selectedIdCard, setSelectedIdCard] = useState(null);
 
-  // የተማሪ መረጃዎችን የያዘው ስቴት
+  // የተማሪ መረጃዎችን የያዘው ስቴት (ለኮሌጅ ደረጃዎች የተስተካከለ)
   const [studentForm, setStudentForm] = useState({
     nameAmh: '',
     nameEng: '',
@@ -20,7 +20,12 @@ function HREmployeeDashboard() {
     birthDate: '',
     age: '',
     studentIdNumber: '',
-    gradeAmh: '',
+    // 🎓 አዳዲስ የኮሌጅ መረጃዎች
+    programLevel: 'Degree', // Level, Degree, Master, PhD
+    department: '',        // የትምህርት መስክ / ዲፓርትመንት
+    academicYear: '1ኛ ዓመት',  // ዓመተ ትምህርት
+    semester: '1ኛ ሴሚስተር',   // ሴሚስተር
+    gradeAmh: '',          // እንደ አማራጭ (ወይም ዓመት/ደረጃ)
     gradeEng: '',
     dateOfIssue: '',
     expireDate: '',
@@ -54,6 +59,10 @@ function HREmployeeDashboard() {
       birthDate: student.birthDate || '',
       age: student.age || '',
       studentIdNumber: student.studentIdNumber || '',
+      programLevel: student.programLevel || 'Degree',
+      department: student.department || '',
+      academicYear: student.academicYear || '1ኛ ዓመት',
+      semester: student.semester || '1ኛ ሴሚስተር',
       gradeAmh: student.gradeAmh || '',
       gradeEng: student.gradeEng || '',
       dateOfIssue: student.dateOfIssue || '',
@@ -92,9 +101,10 @@ function HREmployeeDashboard() {
       setEditingStudentId(null);
       setStudentForm({
         nameAmh: '', nameEng: '', fatherNameAmh: '', grandfatherNameAmh: '', motherNameAmh: '', gender: 'ወንድ',
-        birthDate: '', age: '', studentIdNumber: '', gradeAmh: '', gradeEng: '', dateOfIssue: '',
-        expireDate: '', addressAmh: '', addressEng: '', city: '', woreda: '', nationality: 'ኢትዮጵያዊ',
-        phoneNumber: '', guardianName: '', guardianPhone: '', imageUrl: ''
+        birthDate: '', age: '', studentIdNumber: '', programLevel: 'Degree', department: '', academicYear: '1ኛ ዓመት',
+        semester: '1ኛ ሴሚስተር', gradeAmh: '', gradeEng: '', dateOfIssue: '', expireDate: '', addressAmh: '',
+        addressEng: '', city: '', woreda: '', nationality: 'ኢትዮጵያዊ', phoneNumber: '', guardianName: '',
+        guardianPhone: '', imageUrl: ''
       });
     }, 500);
   };
@@ -102,7 +112,7 @@ function HREmployeeDashboard() {
   return (
     <div className="min-h-screen bg-gray-950 text-white p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-blue-400 mb-6">👔 የHR ሰራተኛ - የተማሪዎች ምዝገባ እና መታወቂያ ማዕከል</h1>
+        <h1 className="text-2xl md:text-3xl font-extrabold text-blue-400 mb-6">👔 የኮሌጅ ሬጅስትራር / HR - የተማሪዎች ምዝገባ እና መታወቂያ ማዕከል</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Form Section */}
@@ -123,6 +133,45 @@ function HREmployeeDashboard() {
                 <input type="text" name="motherNameAmh" placeholder="የእናት ስም" value={studentForm.motherNameAmh} onChange={handleChange} required className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm" />
               </div>
 
+              {/* 🎓 የኮሌጅ መርሃ ግብር እና ዲፓርትመንት ምርጫ */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">የትምህርት ደረጃ</label>
+                  <select name="programLevel" value={studentForm.programLevel} onChange={handleChange} className="w-full p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm">
+                    <option value="Level">Level (ቴክኒክና ሙያ)</option>
+                    <option value="Degree">Degree (ዲግሪ)</option>
+                    <option value="Master">Master's (ማስተርስ)</option>
+                    <option value="PhD">PhD (ዶክትሬት)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">ዲፓርትመንት / መስክ</label>
+                  <input type="text" name="department" placeholder="ምሳሌ፦ Software Eng." value={studentForm.department} onChange={handleChange} required className="w-full p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">ዓመተ ትምህርት</label>
+                  <select name="academicYear" value={studentForm.academicYear} onChange={handleChange} className="w-full p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm">
+                    <option value="1ኛ ዓመት">1ኛ ዓመት</option>
+                    <option value="2ኛ ዓመት">2ኛ ዓመት</option>
+                    <option value="3ኛ ዓመት">3ኛ ዓመት</option>
+                    <option value="4ኛ ዓመት">4ኛ ዓመት</option>
+                    <option value="5ኛ ዓመት">5ኛ ዓመት</option>
+                    <option value="ምርምር/Thesis">ምርምር / Thesis</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">ሴሚስተር</label>
+                  <select name="semester" value={studentForm.semester} onChange={handleChange} className="w-full p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm">
+                    <option value="1ኛ ሴሚስተር">1ኛ ሴሚስተር</option>
+                    <option value="2ኛ ሴሚስተር">2ኛ ሴሚስተር</option>
+                    <option value="የክረምት ፕሮግራም">የክረምት ፕሮግራም</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <select name="gender" value={studentForm.gender} onChange={handleChange} className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm">
                   <option value="ወንድ">ወንድ</option>
@@ -140,11 +189,6 @@ function HREmployeeDashboard() {
                   <label className="text-xs text-gray-400 mb-1 block">እድሜ</label>
                   <input type="number" name="age" placeholder="እድሜ" value={studentForm.age} onChange={handleChange} required className="w-full p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm" />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <input type="text" name="gradeAmh" placeholder="ክፍል (ဥድ. 10ኛ)" value={studentForm.gradeAmh} onChange={handleChange} required className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm" />
-                <input type="text" name="gradeEng" placeholder="Grade (e.g. Grade 10)" value={studentForm.gradeEng} onChange={handleChange} required className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -186,9 +230,10 @@ function HREmployeeDashboard() {
                       setEditingStudentId(null);
                       setStudentForm({
                         nameAmh: '', nameEng: '', fatherNameAmh: '', grandfatherNameAmh: '', motherNameAmh: '', gender: 'ወንድ',
-                        birthDate: '', age: '', studentIdNumber: '', gradeAmh: '', gradeEng: '', dateOfIssue: '',
-                        expireDate: '', addressAmh: '', addressEng: '', city: '', woreda: '', nationality: 'ኢትዮጵያዊ',
-                        phoneNumber: '', guardianName: '', guardianPhone: '', imageUrl: ''
+                        birthDate: '', age: '', studentIdNumber: '', programLevel: 'Degree', department: '', academicYear: '1ኛ ዓመት',
+                        semester: '1ኛ ሴሚስተር', gradeAmh: '', gradeEng: '', dateOfIssue: '', expireDate: '', addressAmh: '',
+                        addressEng: '', city: '', woreda: '', nationality: 'ኢትዮጵያዊ', phoneNumber: '', guardianName: '',
+                        guardianPhone: '', imageUrl: ''
                       });
                     }} 
                     className="py-3 px-4 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition"
@@ -208,9 +253,9 @@ function HREmployeeDashboard() {
               <thead>
                 <tr className="border-b border-gray-800 text-gray-400 text-sm">
                   <th className="p-3">ተማሪ / Student</th>
-                  <th className="p-3">ክፍል / Grade</th>
+                  <th className="p-3">ደረጃ እና ዲፓርትመንት</th>
                   <th className="p-3">መታወቂያ ቁጥር</th>
-                  <th className="p-3">ወላጅ/አሳዳጊ ስልክ</th>
+                  <th className="p-3">ስልክ ቁጥር</th>
                   <th className="p-3">እርምጃዎች</th>
                 </tr>
               </thead>
@@ -221,14 +266,15 @@ function HREmployeeDashboard() {
                       <img src={st.imageUrl || 'https://via.placeholder.com/40'} alt={st.nameAmh} className="w-10 h-10 rounded-full object-cover border border-blue-500" />
                       <div>
                         <div>{st.nameAmh} {st.fatherNameAmh}</div>
-                        <div className="text-xs text-gray-400">እናት: {st.motherNameAmh}</div>
+                        <div className="text-xs text-gray-400">{st.nameEng}</div>
                       </div>
                     </td>
                     <td className="p-3 text-gray-300">
-                      <div>{st.gradeAmh}</div>
+                      <div className="font-bold text-blue-400">{st.programLevel}</div>
+                      <div className="text-xs text-gray-400">{st.department} ({st.academicYear})</div>
                     </td>
                     <td className="p-3 font-mono text-xs text-blue-300">{st.studentIdNumber}</td>
-                    <td className="p-3 text-gray-300">{st.guardianPhone}</td>
+                    <td className="p-3 text-gray-300">{st.phoneNumber || st.guardianPhone}</td>
                     <td className="p-3">
                       <div className="flex gap-2 items-center">
                         <button onClick={() => setSelectedIdCard(st)} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg transition">
@@ -265,7 +311,7 @@ function HREmployeeDashboard() {
               {/* Front Side */}
               <div className="w-[260px] h-[410px] bg-[#0b192c] text-white rounded-xl shadow-2xl border-2 border-[#d4af37] overflow-hidden flex flex-col p-3 relative">
                 <div className="text-center mb-2">
-                  <h2 className="text-[11px] font-extrabold tracking-wider text-white">SCHOOL NAME</h2>
+                  <h2 className="text-[11px] font-extrabold tracking-wider text-white">COLLEGE / UNIVERSITY</h2>
                   <p className="text-[8px] text-[#d4af37] font-medium">STUDENT ID CARD</p>
                 </div>
                 <div className="flex flex-col items-center my-auto">
@@ -274,24 +320,25 @@ function HREmployeeDashboard() {
                   </div>
                   <h3 className="text-[11px] font-bold mt-1 text-center">{selectedIdCard.nameAmh} {selectedIdCard.fatherNameAmh}</h3>
                   <h3 className="text-[10px] font-semibold text-gray-300">{selectedIdCard.nameEng}</h3>
-                  <p className="text-[9px] text-[#d4af37] font-semibold mt-0.5">{selectedIdCard.gradeAmh}</p>
+                  <p className="text-[9px] text-[#d4af37] font-semibold mt-0.5">{selectedIdCard.programLevel} - {selectedIdCard.department}</p>
                 </div>
                 <div className="text-[9px] space-y-1 text-gray-200 bg-black/25 p-2 rounded-lg border border-[#d4af37]/20">
                   <div className="flex justify-between"><span>መታወቂያ:</span> <span className="font-mono">{selectedIdCard.studentIdNumber}</span></div>
-                  <div className="flex justify-between"><span>ስልክ:</span> <span>{selectedIdCard.phoneNumber || 'N/A'}</span></div>
+                  <div className="flex justify-between"><span>ዓመት:</span> <span>{selectedIdCard.academicYear}</span></div>
                 </div>
               </div>
 
               {/* Back Side */}
               <div className="w-[260px] h-[410px] bg-[#0b192c] text-white rounded-xl shadow-2xl border-2 border-[#d4af37] overflow-hidden flex flex-col justify-between p-3">
                 <div className="text-center">
-                  <h3 className="text-[10px] font-bold text-[#d4af37] border-b border-white/10 pb-1">የወላጅ/አሳዳጊ መረጃ</h3>
+                  <h3 className="text-[10px] font-bold text-[#d4af37] border-b border-white/10 pb-1">አደጋ ጊዜ እና አድራሻ</h3>
                 </div>
                 <div className="text-[9px] space-y-1.5 text-gray-200 bg-black/30 p-2 rounded-xl">
-                  <div>እናት: <span className="font-bold">{selectedIdCard.motherNameAmh}</span></div>
+                  <div>ሴሚስተር: <span className="font-bold">{selectedIdCard.semester}</span></div>
                   <div>ወላጅ: <span className="font-bold">{selectedIdCard.guardianName}</span></div>
                   <div>ስልክ: <span className="font-bold">{selectedIdCard.guardianPhone}</span></div>
                   <div>አድራሻ: {selectedIdCard.city}, ወረዳ {selectedIdCard.woreda}</div>
+                  <div>የሚያበቃበት: {selectedIdCard.expireDate}</div>
                 </div>
                 <div className="flex flex-col items-center bg-black/30 p-2 rounded-xl">
                   <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(`${FRONTEND_URL}/verify/${selectedIdCard._id}`)}`} alt="QR Code" style={{ width: '70px', height: '70px' }} />
