@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    role: { type: String, enum: ['student', 'teacher', 'admin', 'hr'], default: 'student' }, // 'hr' ተካትቷል
+    role: { type: String, enum: ['student', 'teacher', 'admin', 'hr'], default: 'student' },
     resetRequested: { type: Boolean, default: false },
     resetTokenExpire: { type: Date, default: null },
     createdAt: { type: Date, default: Date.now }
@@ -16,20 +16,28 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 
 // ==========================================
-// 2. STUDENT SCHEMA (አዲስ የተጨመረ - የHR ተማሪ መዝገብ)
+// 2. STUDENT SCHEMA (ለኮሌጅ ደረጃዎች የተስተካከለ)
 // ==========================================
 const studentSchema = new mongoose.Schema({
     nameAmh: { type: String, required: true },
     nameEng: { type: String, required: true },
     fatherNameAmh: { type: String, required: true },
     grandfatherNameAmh: { type: String, required: true },
-    motherNameAmh: { type: String, required: true }, // የእናት ስም
+    motherNameAmh: { type: String, required: true },
     gender: { type: String, default: 'ወንድ' },
     birthDate: { type: String, required: true },
     age: { type: Number, required: true },
     studentIdNumber: { type: String, required: true, unique: true },
-    gradeAmh: { type: String, required: true },
-    gradeEng: { type: String, required: true },
+    
+    // 🎓 አዳዲስ የኮሌጅ መስኮች (እዚህ ተጨምረዋል)
+    programLevel: { type: String, enum: ['Level', 'Degree', 'Master', 'PhD'], default: 'Degree' },
+    department: { type: String, required: true },
+    academicYear: { type: String, default: '1ኛ ዓመት' },
+    semester: { type: String, default: '1ኛ ሴሚስተር' },
+
+    gradeAmh: { type: String, default: '' }, // ከአሁን በኋላ required አያስፈልገውም
+    gradeEng: { type: String, default: '' }, // ከአሁን በኋላ required አያስፈልገውም
+    
     dateOfIssue: { type: String, required: true },
     expireDate: { type: String, required: true },
     city: { type: String, required: true },
@@ -52,7 +60,7 @@ const examSchema = new mongoose.Schema({
     subject: { type: String, required: true },
     examDate: { type: Date, required: true },
     resultReleaseDate: { type: Date, required: true },
-    duration: { type: Number, required: true }, // በደቂቃ (in minutes)
+    duration: { type: Number, required: true },
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -80,7 +88,7 @@ const questionBankSchema = new mongoose.Schema({
     optionB: { type: String, required: true },
     optionC: { type: String, default: '' },
     optionD: { type: String, default: '' },
-    correctAnswer: { type: String, required: true }, // 'A', 'B', 'C', or 'D'
+    correctAnswer: { type: String, required: true },
     explanation: { type: String, default: '' },
     createdAt: { type: Date, default: Date.now }
 });
@@ -92,7 +100,7 @@ const QuestionBank = mongoose.model('QuestionBank', questionBankSchema);
 // ==========================================
 module.exports = {
     User,
-    Student, // 👈 አዲሱ የተማሪ ሞዴል እዚህ ተጨምሯል
+    Student,
     Exam,
     Content,
     QuestionBank
