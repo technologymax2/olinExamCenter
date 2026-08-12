@@ -11,6 +11,10 @@ function HREmployeeDashboard() {
   const [editingStudentId, setEditingStudentId] = useState(null);
   const [selectedIdCard, setSelectedIdCard] = useState(null);
 
+  // 🔹 አዲስ የተጨመሩ ስቴቶች (ለ Bulk Selection እና Academic Year Update)
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  const [targetAcademicYear, setTargetAcademicYear] = useState('2ኛ ዓመት');
+
   const IMGBB_API_KEY = "ebd592608f4dba1e8271bec8e920c408";
 
   // የተማሪ መረጃዎችን የያዘው ስቴት
@@ -25,9 +29,9 @@ function HREmployeeDashboard() {
     age: '',
     studentIdNumber: '',
     programLevel: 'Degree', // Level, Degree, Master, PhD
-    department: '',         // የትምህርት መስክ / ዲፓርትመንት
-    academicYear: '1ኛ ዓመት',  // ዓመተ ትምህርት
-    semester: '1ኛ ሴሚስተር',   // ሴሚስተር
+    department: '',          // የትምህርት መስክ / ዲፓርትመንት
+    academicYear: '1ኛ ዓመት',   // ዓመተ ትምህርት
+    semester: '1ኛ ሴሚስተር',    // ሴሚስተር
     gradeAmh: '',
     gradeEng: '',
     dateOfIssue: '',
@@ -83,6 +87,40 @@ function HREmployeeDashboard() {
     }
   };
 
+  // 🔹 የ Checkbox ፋንክሽኖች
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedStudentIds(studentList.map(s => s._id));
+    } else {
+      setSelectedStudentIds([]);
+    }
+  };
+
+  const handleCheckboxChange = (id) => {
+    setSelectedStudentIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  // 🔹 የተመረጡትን ተማሪዎች ዓመተ ትምህርት በጅምላ ማሻሻያ
+  const handleBulkUpdateAcademicYear = () => {
+    if (selectedStudentIds.length === 0) {
+      setErrorMessage("እባክዎ መጀመሪያ ከዝርዝሩ ውስጥ ተማሪዎችን ይምረጡ!");
+      return;
+    }
+
+    setStudentList(prev => prev.map(student => {
+      if (selectedStudentIds.includes(student._id)) {
+        return { ...student, academicYear: targetAcademicYear };
+      }
+      return student;
+    }));
+
+    setStudentStatus(`${selectedStudentIds.length} ተማሪዎች በተሳካ ሁኔታ ወደ ${targetAcademicYear} ተሻሽለዋል!`);
+    setErrorMessage('');
+    setSelectedStudentIds([]); // ምርጫውን ባዶ ማድረግ
+  };
+
   const handleEditClick = (student) => {
     setEditingStudentId(student._id);
     setStudentForm({
@@ -119,6 +157,7 @@ function HREmployeeDashboard() {
 
   const handleDeleteStudent = (id) => {
     setStudentList(prev => prev.filter(s => s._id !== id));
+    setSelectedStudentIds(prev => prev.filter(item => item !== id));
   };
 
   const handleSubmit = (e) => {
@@ -127,14 +166,12 @@ function HREmployeeDashboard() {
     setStudentStatus('');
 
     // --- VALIDATIONS ---
-    // 1. ስልክ ቁጥር ቫሊዴሽን (ልክ 10 ዲጂት መሆኑን ማረጋገጥ - በ 09 ወይም 07 የሚጀምር)
     const phoneRegex = /^(09|07)\d{8}$/;
     if (studentForm.phoneNumber && !phoneRegex.test(studentForm.phoneNumber)) {
       setErrorMessage('ስልክ ቁጥር በትክክል 10 ዲጂት መሆን አለበት (ምሳሌ: 0911223344)');
       return;
     }
 
-    // 2. የወላጅ ስልክ ቁጥር ቫሊዴሽን
     if (studentForm.guardianPhone && !phoneRegex.test(studentForm.guardianPhone)) {
       setErrorMessage('የወላጅ ስልክ ቁጥር በትክክል 10 ዲጂት መሆን አለበት (ምሳሌ: 0911223344)');
       return;
@@ -328,11 +365,48 @@ function HREmployeeDashboard() {
           </div>
 
           {/* Student List Section */}
-          <div className="lg:col-span-2 bg-gray-900 p-6 rounded-2xl shadow-lg border border-gray-800 overflow-x-auto">
-            <h3 className="text-xl font-bold mb-4 text-blue-400">📋 የተመዘገቡ ተማሪዎች ዝርዝር</h3>
+          <div className="lg:col-span-2 bg-gray-900 p-6 rounded-2xl shadow-lg border border-gray-800 overflow-x-auto flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <h3 className="text-xl font-bold text-blue-400">📋 የተመዘገቡ ተማሪዎች ዝርዝር</h3>
+
+              {/* 🔹 Bulk Update Controls (የተመረጡትን ዓመት በአንድ ላይ መቀየሪያ ፓነል) */}
+              {studentList.length > 0 && (
+                <div className="flex items-center gap-2 bg-gray-800 p-2 rounded-xl border border-gray-700">
+                  <span className="text-xs text-gray-300">የተመረጡትን ወደ፦</span>
+                  <select 
+                    value={targetAcademicYear} 
+                    onChange={(e) => setTargetAcademicYear(e.target.value)} 
+                    className="p-1.5 bg-gray-900 border border-gray-600 rounded-lg text-white text-xs"
+                  >
+                    <option value="1ኛ ዓመት">1ኛ ዓመት</option>
+                    <option value="2ኛ ዓመት">2ኛ ዓመት</option>
+                    <option value="3ኛ ዓመት">3ኛ ዓመት</option>
+                    <option value="4ኛ ዓመት">4ኛ ዓመት</option>
+                    <option value="5ኛ ዓመት">5ኛ ዓመት</option>
+                    <option value="ምርምር/Thesis">ምርምር / Thesis</option>
+                  </select>
+                  <button 
+                    onClick={handleBulkUpdateAcademicYear}
+                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg transition"
+                  >
+                    አዘምን ({selectedStudentIds.length})
+                  </button>
+                </div>
+              )}
+            </div>
+
             <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="border-b border-gray-800 text-gray-400 text-sm">
+                  {/* 🔹 Select All Checkbox */}
+                  <th className="p-3 w-10">
+                    <input 
+                      type="checkbox" 
+                      onChange={handleSelectAll} 
+                      checked={studentList.length > 0 && selectedStudentIds.length === studentList.length}
+                      className="w-4 h-4 rounded border-gray-700 bg-gray-900 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </th>
                   <th className="p-3">ተማሪ / Student</th>
                   <th className="p-3">ደረጃ እና ዲፓርትመንት</th>
                   <th className="p-3">መታወቂያ ቁጥር</th>
@@ -343,6 +417,15 @@ function HREmployeeDashboard() {
               <tbody className="divide-y divide-gray-800 text-sm">
                 {studentList.map((st) => (
                   <tr key={st._id} className="hover:bg-gray-800/50">
+                    {/* 🔹 Individual Row Checkbox */}
+                    <td className="p-3">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedStudentIds.includes(st._id)}
+                        onChange={() => handleCheckboxChange(st._id)}
+                        className="w-4 h-4 rounded border-gray-700 bg-gray-900 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </td>
                     <td className="p-3 font-semibold flex items-center gap-3">
                       <img src={st.imageUrl || 'https://via.placeholder.com/40'} alt={st.nameAmh} className="w-10 h-10 rounded-full object-cover border border-blue-500" />
                       <div>
@@ -372,7 +455,7 @@ function HREmployeeDashboard() {
                   </tr>
                 ))}
                 {studentList.length === 0 && (
-                  <tr><td colSpan="5" className="p-6 text-center text-gray-500">ምንም የተመዘገበ ተማሪ የለም።</td></tr>
+                  <tr><td colSpan="6" className="p-6 text-center text-gray-500">ምንም የተመዘገበ ተማሪ የለም።</td></tr>
                 )}
               </tbody>
             </table>
