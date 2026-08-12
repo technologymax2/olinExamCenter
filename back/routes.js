@@ -7,7 +7,7 @@ const multer = require('multer');
 // Configure multer for file upload handling (temporary storage)
 const upload = multer({ dest: 'uploads/' });
 
-// Models (Imported using destructuring - Student ተጨምሯል)
+// Models (Imported using destructuring)
 const { User, Student, Exam, Content, QuestionBank } = require('./models');
 
 // ==========================================
@@ -52,7 +52,7 @@ router.post('/users/upload-excel', upload.single('file'), async (req, res) => {
 });
 
 // ==========================================
-// HR / STUDENT REGISTRATION ROUTES (አዲስ የተጨመረ)
+// HR / STUDENT REGISTRATION ROUTES
 // ==========================================
 
 // 1. ሁሉንም የተመዘገቡ ተማሪዎች ማምጣት (Get All Students)
@@ -65,7 +65,7 @@ router.get('/hr/students', async (req, res) => {
     }
 });
 
-// 2. አዲስ ተማሪ መዝግብ (Register Student)
+// 2. አዲስ ተማሪ መዝግብ (Register Student - አዳዲስ የኮሌጅ ፊልዶችን ጨምሮ)
 router.post('/hr/students', async (req, res) => {
     try {
         const studentData = req.body;
@@ -267,9 +267,9 @@ router.post('/admin/question-bank/bulk-add', async (req, res) => {
       parsedQuestions = questions;
     } else if (rawText) {
       let cleanedText = rawText
-        .replace(/🎓[^\n]*/g, '')         
-        .replace(/advertisement/gi, '')         
-        .replace(/View\s*Answer/gi, '')         
+        .replace(/🎓[^\n]*/g, '')          
+        .replace(/advertisement/gi, '')          
+        .replace(/View\s*Answer/gi, '')          
         .replace(/FoodAnswer:/gi, 'Answer:');     
 
       const blocks = cleanedText
@@ -371,21 +371,24 @@ router.post('/contents', async (req, res) => {
 });
 
 // ==========================================
-// ADMIN STATS & MANAGEMENT ROUTES
+// ADMIN STATS & MANAGEMENT ROUTES (የተስተካከለ - አንድ የተዋሃደ ራውተር)
 // ==========================================
 
+// 1. በአድሚን ስታቲስቲክስ ውስጥ የ HR ሰራተኞችን ጭምር ማሳየት
 router.get('/admin/stats', async (req, res) => {
     try {
-        const totalStudents = await Student.countDocuments(); // ከStudent ስኪማ የሚቆጠር ይሆናል
+        const totalStudents = await Student.countDocuments();
         const totalTeachers = await User.countDocuments({ role: 'teacher' });
+        const totalHR = await User.countDocuments({ role: 'hr' }); 
         const totalExams = await Exam.countDocuments();
         
-        res.status(200).json({ totalStudents, totalTeachers, totalExams });
+        res.status(200).json({ totalStudents, totalTeachers, totalHR, totalExams });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
+// 2. አድሚኑ ማንኛውንም ተጠቃሚ (student, teacher, hr, admin) መመዝገብ እንዲችል
 router.post('/admin/users', async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
@@ -401,7 +404,7 @@ router.post('/admin/users', async (req, res) => {
         });
 
         await newUser.save();
-        res.status(201).json({ message: 'ተጠቃሚው ተመዝግቧል!' });
+        res.status(201).json({ message: 'ተጠቃሚው (ሰራተኛው/ተማሪው) በተሳካ ሁኔታ ተመዝግቧል!' });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
@@ -427,7 +430,7 @@ router.post('/admin/exams', async (req, res) => {
 });
 
 // ==========================================
-// LOGIN ROUTE (Updated to support 'hr' role)
+// LOGIN ROUTE
 // ==========================================
 router.post('/login', async (req, res) => {
     try {
@@ -446,7 +449,7 @@ router.post('/login', async (req, res) => {
         res.status(200).json({
             message: 'በተሳካ ሁኔታ ገብተዋል!',
             token: user._id, 
-            role: user.role, // 'admin', 'teacher', 'student', or 'hr'
+            role: user.role, 
             name: user.name,
             email: user.email
         });
@@ -632,40 +635,4 @@ router.delete('/admin/exams/:id', async (req, res) => {
     }
 });
 
-
-// 1. በአድሚን ስታቲስቲክስ ውስጥ የ HR ሰራተኞችን ቁጥር ማሳየት
-router.get('/admin/stats', async (req, res) => {
-    try {
-        const totalStudents = await Student.countDocuments();
-        const totalTeachers = await User.countDocuments({ role: 'teacher' });
-        const totalHR = await User.countDocuments({ role: 'hr' }); // 👈 የ HR ሰራተኞች ብዛት
-        const totalExams = await Exam.countDocuments();
-        
-        res.status(200).json({ totalStudents, totalTeachers, totalHR, totalExams });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// 2. አድሚኑ ማንኛውንም ተጠቃሚ (student, teacher, hr, admin) መመዝገብ እንዲችል
-router.post('/admin/users', async (req, res) => {
-    try {
-        const { name, email, password, role } = req.body;
-        
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password || '123456', salt);
-
-        const newUser = new User({
-            name,
-            email,
-            password: hashedPassword,
-            role: role || 'student' // 'student', 'teacher', 'hr', 'admin' መሆን ይችላል
-        });
-
-        await newUser.save();
-        res.status(201).json({ message: 'ተጠቃሚው (ሰራተኛው/ተማሪው) በተሳካ ሁኔታ ተመዝግቧል!' });
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
-});
 module.exports = router;
