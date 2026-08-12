@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 function HREmployeeDashboard() {
   const [loading, setLoading] = useState(false);
@@ -15,6 +15,7 @@ function HREmployeeDashboard() {
   const [targetAcademicYear, setTargetAcademicYear] = useState('2ኛ ዓመት');
 
   const IMGBB_API_KEY = "ebd592608f4dba1e8271bec8e920c408";
+  const API_URL = process.env.REACT_APP_API_URL || 'https://olinexamcenter.onrender.com';
 
   // የተማሪ መረጃዎችን የያዘው ስቴት
   const initialFormState = {
@@ -465,7 +466,7 @@ function HREmployeeDashboard() {
                   <div>የሚያበቃበት: {selectedIdCard.expireDate}</div>
                 </div>
                 <div className="flex flex-col items-center bg-black/30 p-2 rounded-xl">
-                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(`${FRONTEND_URL}/verify/${selectedIdCard._id}`)}`} alt="QR Code" style={{ width: '70px', height: '70px' }} />
+                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(`${API_URL}/verify/${selectedIdCard._id}`)}`} alt="QR Code" style={{ width: '70px', height: '70px' }} />
                   <span className="text-[7px] text-[#d4af37] font-bold mt-1">SCAN TO VERIFY</span>
                 </div>
               </div>
