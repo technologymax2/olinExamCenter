@@ -3,13 +3,16 @@ import React, { useState } from 'react';
 function HREmployeeDashboard() {
   const [activeTab, setActiveTab] = useState('students');
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [studentStatus, setStudentStatus] = useState('');
   
   const [studentList, setStudentList] = useState([]);
   const [editingStudentId, setEditingStudentId] = useState(null);
   const [selectedIdCard, setSelectedIdCard] = useState(null);
 
-  // የተማሪ መረጃዎችን የያዘው ስቴት (ለኮሌጅ ደረጃዎች የተስተካከለ)
+  const IMGBB_API_KEY = "ebd592608f4dba1e8271bec8e920c408";
+
+  // የተማሪ መረጃዎችን የያዘው ስቴት
   const [studentForm, setStudentForm] = useState({
     nameAmh: '',
     nameEng: '',
@@ -20,12 +23,11 @@ function HREmployeeDashboard() {
     birthDate: '',
     age: '',
     studentIdNumber: '',
-    // 🎓 አዳዲስ የኮሌጅ መረጃዎች
     programLevel: 'Degree', // Level, Degree, Master, PhD
     department: '',        // የትምህርት መስክ / ዲፓርትመንት
     academicYear: '1ኛ ዓመት',  // ዓመተ ትምህርት
     semester: '1ኛ ሴሚስተር',   // ሴሚስተር
-    gradeAmh: '',          // እንደ አማራጭ (ወይም ዓመት/ደረጃ)
+    gradeAmh: '',
     gradeEng: '',
     dateOfIssue: '',
     expireDate: '',
@@ -45,6 +47,36 @@ function HREmployeeDashboard() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setStudentForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  // ☁️ ምስልን በቀጥታ ወደ ImgBB ሰርቨር የሚጭን ፋንክሽን
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setStudentForm(prev => ({ ...prev, imageUrl: data.data.url }));
+        setStudentStatus('ፎቶው በተሳካ ሁኔታ ተጭኗል!');
+      } else {
+        setStudentStatus('ፎቶውን መጫን አልተቻለም፣ እባክዎ እንደገና ይሞክሩ።');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      setStudentStatus('የኔትወርክ ስህተት ተፈጥሯል!');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleEditClick = (student) => {
@@ -133,7 +165,6 @@ function HREmployeeDashboard() {
                 <input type="text" name="motherNameAmh" placeholder="የእናት ስም" value={studentForm.motherNameAmh} onChange={handleChange} required className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm" />
               </div>
 
-              {/* 🎓 የኮሌጅ መርሃ ግብር እና ዲፓርትመንት ምርጫ */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">የትምህርት ደረጃ</label>
@@ -217,10 +248,26 @@ function HREmployeeDashboard() {
                 </div>
               </div>
 
-              <input type="text" name="imageUrl" placeholder="የፎቶ ሊንክ (Image URL)" value={studentForm.imageUrl} onChange={handleChange} className="w-full p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm" />
+              {/* 📷 የተማሪ ፎቶ መጫኛ ወደ ImgBB */}
+              <div>
+                <label className="text-xs text-blue-400 mb-1 block font-bold">የተማሪ ፎቶ ጫን (Upload Photo)</label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleImageUpload} 
+                  className="w-full p-2 bg-gray-900 border border-gray-700 rounded-xl text-white text-xs file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer" 
+                />
+                {uploadingImage && <p className="text-xs text-yellow-400 mt-1">ፎቶው ወደ ሰርቨር እየተጫነ ነው...</p>}
+                {studentForm.imageUrl && !uploadingImage && (
+                  <div className="mt-2 flex items-center gap-3">
+                    <img src={studentForm.imageUrl} alt="Preview" className="w-12 h-12 rounded-full object-cover border border-blue-400" />
+                    <span className="text-xs text-green-400">ፎቶው በተሳካ ሁኔታ ተጭኗል!</span>
+                  </div>
+                )}
+              </div>
 
               <div className="flex gap-3 pt-2">
-                <button type="submit" disabled={loading} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl disabled:opacity-50 transition">
+                <button type="submit" disabled={loading || uploadingImage} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl disabled:opacity-50 transition">
                   {loading ? "እየተቀመጠ ነው..." : (editingStudentId ? "ለውጦችን አስቀምጥ" : "ተማሪውን መዝግብ")}
                 </button>
                 {editingStudentId && (
