@@ -5,6 +5,7 @@ function HREmployeeDashboard() {
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [studentStatus, setStudentStatus] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
   
   const [studentList, setStudentList] = useState([]);
   const [editingStudentId, setEditingStudentId] = useState(null);
@@ -24,7 +25,7 @@ function HREmployeeDashboard() {
     age: '',
     studentIdNumber: '',
     programLevel: 'Degree', // Level, Degree, Master, PhD
-    department: '',        // የትምህርት መስክ / ዲፓርትመንት
+    department: '',         // የትምህርት መስክ / ዲፓርትመንት
     academicYear: '1ኛ ዓመት',  // ዓመተ ትምህርት
     semester: '1ኛ ሴሚስተር',   // ሴሚስተር
     gradeAmh: '',
@@ -68,12 +69,15 @@ function HREmployeeDashboard() {
       if (data.success) {
         setStudentForm(prev => ({ ...prev, imageUrl: data.data.url }));
         setStudentStatus('ፎቶው በተሳካ ሁኔታ ተጭኗል!');
+        setErrorMessage('');
       } else {
-        setStudentStatus('ፎቶውን መጫን አልተቻለም፣ እባክዎ እንደገና ይሞክሩ።');
+        setStudentStatus('');
+        setErrorMessage('ፎቶውን መጫን አልተቻለም፣ እባክዎ እንደገና ይሞክሩ።');
       }
     } catch (error) {
       console.error('Error uploading image:', error);
-      setStudentStatus('የኔትወርክ ስህተት ተፈጥሯል!');
+      setStudentStatus('');
+      setErrorMessage('የኔትወርክ ስህተት ተፈጥሯል!');
     } finally {
       setUploadingImage(false);
     }
@@ -110,6 +114,7 @@ function HREmployeeDashboard() {
       imageUrl: student.imageUrl || ''
     });
     setActiveTab('form');
+    setErrorMessage('');
   };
 
   const handleDeleteStudent = (id) => {
@@ -118,6 +123,23 @@ function HREmployeeDashboard() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setErrorMessage('');
+    setStudentStatus('');
+
+    // --- VALIDATIONS ---
+    // 1. ስልክ ቁጥር ቫሊዴሽን (ልክ 10 ዲጂት መሆኑን ማረጋገጥ - በ 09 ወይም 07 የሚጀምር)
+    const phoneRegex = /^(09|07)\d{8}$/;
+    if (studentForm.phoneNumber && !phoneRegex.test(studentForm.phoneNumber)) {
+      setErrorMessage('ስልክ ቁጥር በትክክል 10 ዲጂት መሆን አለበት (ምሳሌ: 0911223344)');
+      return;
+    }
+
+    // 2. የወላጅ ስልክ ቁጥር ቫሊዴሽን
+    if (studentForm.guardianPhone && !phoneRegex.test(studentForm.guardianPhone)) {
+      setErrorMessage('የወላጅ ስልክ ቁጥር በትክክል 10 ዲጂት መሆን አለበት (ምሳሌ: 0911223344)');
+      return;
+    }
+
     setLoading(true);
     
     setTimeout(() => {
@@ -145,6 +167,18 @@ function HREmployeeDashboard() {
     <div className="min-h-screen bg-gray-950 text-white p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-2xl md:text-3xl font-extrabold text-blue-400 mb-6">👔 የኮሌጅ ሬጅስትራር / HR - የተማሪዎች ምዝገባ እና መታወቂያ ማዕከል</h1>
+
+        {/* Error / Success Messages Banner */}
+        {errorMessage && (
+          <div className="mb-4 p-4 bg-red-600/20 border border-red-500 text-red-400 rounded-xl text-sm font-medium">
+            ⚠️ {errorMessage}
+          </div>
+        )}
+        {studentStatus && (
+          <div className="mb-4 p-4 bg-green-600/20 border border-green-500 text-green-400 rounded-xl text-sm font-medium">
+            ✅ {studentStatus}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Form Section */}
@@ -224,12 +258,12 @@ function HREmployeeDashboard() {
 
               <div className="grid grid-cols-2 gap-3">
                 <input type="text" name="studentIdNumber" placeholder="መታወቂያ ቁጥር (ID No)" value={studentForm.studentIdNumber} onChange={handleChange} required className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm" />
-                <input type="text" name="phoneNumber" placeholder="የተማሪ ስልክ ቁጥር" value={studentForm.phoneNumber} onChange={handleChange} className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm" />
+                <input type="text" name="phoneNumber" placeholder="ስልክ ቁጥር (10 ዲጂት)" maxLength="10" value={studentForm.phoneNumber} onChange={handleChange} className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <input type="text" name="guardianName" placeholder="የወላጅ/አሳዳጊ ስም" value={studentForm.guardianName} onChange={handleChange} required className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm" />
-                <input type="text" name="guardianPhone" placeholder="ወላጅ ስልክ ቁጥር" value={studentForm.guardianPhone} onChange={handleChange} required className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm" />
+                <input type="text" name="guardianPhone" placeholder="ወላጅ ስልክ (10 ዲጂት)" maxLength="10" value={studentForm.guardianPhone} onChange={handleChange} required className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -275,6 +309,7 @@ function HREmployeeDashboard() {
                     type="button" 
                     onClick={() => {
                       setEditingStudentId(null);
+                      setErrorMessage('');
                       setStudentForm({
                         nameAmh: '', nameEng: '', fatherNameAmh: '', grandfatherNameAmh: '', motherNameAmh: '', gender: 'ወንድ',
                         birthDate: '', age: '', studentIdNumber: '', programLevel: 'Degree', department: '', academicYear: '1ኛ ዓመት',
@@ -290,7 +325,6 @@ function HREmployeeDashboard() {
                 )}
               </div>
             </form>
-            {studentStatus && <p className="mt-3 text-center font-medium text-green-400 text-sm">{studentStatus}</p>}
           </div>
 
           {/* Student List Section */}
