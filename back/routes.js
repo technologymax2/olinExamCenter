@@ -1,619 +1,1153 @@
 const express = require('express');
 const router = express.Router();
-const xlsx = require('xlsx');
+
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const multer = require('multer');
+const xlsx = require('xlsx');
+const fs = require('fs');
 
-// Configure multer for file upload handling (temporary storage)
-const upload = multer({ dest: 'uploads/' });
-
-// Models (Imported using destructuring)
-const { User, Student, Exam, Content, QuestionBank } = require('./models');
-
-// ==========================================
-// USER ROUTES (Excel Upload)
-// ==========================================
-router.post('/users/upload-excel', upload.single('file'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'እባክዎ የኤክሴል ፋይል ይጫኑ!' });
-        }
-
-        const workbook = xlsx.readFile(req.file.path);
-        const sheetName = workbook.SheetNames[0];
-        const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
-
-        if (sheetData.length === 0) {
-            return res.status(400).json({ error: 'የኤክሴል ፋይሉ ባዶ ነው!' });
-        }
-
-        for (let user of sheetData) {
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(user.password || '123456', salt);
-
-            await User.findOneAndUpdate(
-                { email: user.email },
-                {
-                    name: user.name,
-                    email: user.email,
-                    password: hashedPassword,
-                    role: user.role || 'student'
-                },
-                { upsert: true, new: true }
-            );
-        }
-
-        res.status(200).json({ message: 'ተጠቃሚዎች ከኤክሴል ፋይል ተጭነው ተመዝግበዋል!' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+const {
+    User,
+    Student,
+    Exam,
+    Content,
+    QuestionBank,
+    ExamSubmission
+} = require('./models');
 
 // ==========================================
-// HR / STUDENT REGISTRATION ROUTES
+// CONFIG
 // ==========================================
-router.get('/hr/students', async (req, res) => {
-    try {
-        const students = await Student.find().sort({ createdAt: -1 });
-        res.status(200).json(students);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 
-router.post('/hr/students', async (req, res) => {
-    try {
-        const studentData = req.body;
-        
-        const existingStudent = await Student.findOne({ studentIdNumber: studentData.studentIdNumber });
-        if (existingStudent) {
-            return res.status(400).json({ error: 'ይህ የመታወቂያ ቁጥር ቀድሞ ተመዝግቧል!' });
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET is missing.');
+}
+
+// ==========================================
+// MULTER
+// ==========================================
+
+const upload = multer({
+    dest: 'uploads/',
+    limits: {
+        fileSize: 10 * 1024 * 1024
+    },
+    fileFilter: (req, file, cb) => {
+        const allowed = [
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-excel'
+        ];
+
+        if (
+            allowed.includes(file.mimetype) ||
+            file.originalname.match(/\.(xlsx|xls)$/i)
+        ) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only Excel files are allowed.'));
         }
-
-        const newStudent = new Student(studentData);
-        await newStudent.save();
-
-        res.status(201).json({ message: 'ተማሪው በተሳካ ሁኔታ ተመዝግቧል!', student: newStudent });
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
-});
-
-router.put('/hr/students/:id', async (req, res) => {
-    try {
-        const updatedStudent = await Student.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true }
-        );
-
-        if (!updatedStudent) {
-            return res.status(404).json({ error: 'ተማሪው አልተገኘም!' });
-        }
-
-        res.status(200).json({ message: 'የተማሪው መረጃ በተሳካ ሁኔታ ተሻሽሏል!', student: updatedStudent });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.delete('/hr/students/:id', async (req, res) => {
-    try {
-        const deletedStudent = await Student.findByIdAndDelete(req.params.id);
-        if (!deletedStudent) {
-            return res.status(404).json({ error: 'ተማሪው አልተገኘም!' });
-        }
-        res.status(200).json({ message: 'ተማሪው በተሳካ ሁኔታ ተሰርዟል!' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.get('/students/verify/:id', async (req, res) => {
-    try {
-        const student = await Student.findById(req.params.id);
-        if (!student) {
-            return res.status(404).json({ error: 'የተማሪው መታወቂያ ትክክል አይደለም ወይም አልተገኘም!' });
-        }
-        res.status(200).json({ message: 'ታማኝ እና የተረጋገጠ ተማሪ ነው', student });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
     }
 });
 
 // ==========================================
-// PASSWORD MANAGEMENT ROUTES
+// JWT AUTH
 // ==========================================
-router.put('/users/change-password', async (req, res) => {
+
+function generateToken(user) {
+    return jwt.sign(
+        {
+            id: user._id.toString(),
+            role: user.role,
+            email: user.email
+        },
+        JWT_SECRET,
+        {
+            expiresIn: '7d'
+        }
+    );
+}
+
+function authenticate(req, res, next) {
     try {
-        const { email, oldPassword, newPassword } = req.body;
+        const authHeader = req.headers.authorization;
 
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({ error: 'ተጠቃሚው አልተገኘም!' });
-        }
-
-        const isMatch = await bcrypt.compare(oldPassword, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ error: 'የድሮው የይለፍ ቃል ስህተት ነው!' });
-        }
-
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(newPassword, salt);
-        await user.save();
-
-        res.status(200).json({ message: 'የይለፍ ቃልዎ በተሳካ ሁኔታ ተቀይሯል!' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.post('/users/request-password-reset', async (req, res) => {
-    try {
-        const { email } = req.body;
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({ error: 'ይህ ኢሜይል በሲስተሙ ውስጥ አልተገኘም!' });
-        }
-
-        user.resetRequested = true;
-        await user.save();
-
-        res.status(200).json({ message: 'የፓስወርድ መቀየሪያ ጥያቄዎ ለአድሚን ተልኳል!' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.post('/admin/approve-password-reset', async (req, res) => {
-    try {
-        const { email, hoursValid = 1 } = req.body; 
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({ error: 'ተጠቃሚው አልተገኘም!' });
-        }
-
-        const expireTime = new Date();
-        expireTime.setHours(expireTime.getHours() + Number(hoursValid));
-
-        user.resetRequested = false;
-        user.resetTokenExpire = expireTime;
-        await user.save();
-
-        res.status(200).json({ message: `ጥያቄው ጸድቋል! ተጠቃሚው እስከ ${expireTime.toLocaleString()} ድረስ መቀየር ይችላል።` });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.put('/users/reset-password-with-approval', async (req, res) => {
-    try {
-        const { email, newPassword } = req.body;
-        const user = await User.findOne({ email });
-
-        if (!user || !user.resetTokenExpire) {
-            return res.status(400).json({ error: 'ከአድሚን የተፈቀደ የፓስወርድ መቀየሪያ ፈቃድ የለዎትም!' });
-        }
-
-        if (new Date() > new Date(user.resetTokenExpire)) {
-            return res.status(400).json({ error: 'የተሰጠዎት የሰዓት ገደብ (Time Limit) አልፏል! እባክዎ እንደገና ለአድሚን ጥያቄ ይላኩ።' });
-        }
-
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(newPassword, salt);
-        user.resetTokenExpire = null; 
-        await user.save();
-
-        res.status(200).json({ message: 'አዲሱ የይለፍ ቃልዎ በተሳካ ሁኔታ ተቀይሯል!' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// ==========================================
-// QUESTION BANK ROUTES
-// ==========================================
-router.get('/admin/question-bank', async (req, res) => {
-    try {
-        const questions = await QuestionBank.find().sort({ createdAt: -1 });
-        res.status(200).json(questions);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.post('/admin/question-bank/add', async (req, res) => {
-    try {
-        const { subject, questionText, optionA, optionB, optionC, optionD, correctAnswer, explanation } = req.body;
-        
-        if (!questionText || !optionA || !optionB) {
-            return res.status(400).json({ error: 'እባክዎ ጥያቄውን እና ቢያንስ A እና B አማራጮችን ይሙሉ!' });
-        }
-
-        const newQuestion = new QuestionBank({
-            subject: subject || 'General',
-            questionText,
-            optionA,
-            optionB,
-            optionC,
-            optionD,
-            correctAnswer: correctAnswer || 'A',
-            explanation
-        });
-
-        await newQuestion.save();
-        res.status(201).json({ message: 'ጥያቄው ወደ ፈተና ባንክ ተመዝግቧል!' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.post('/admin/question-bank/bulk-add', async (req, res) => {
-  try {
-    const { questions, rawText, subject } = req.body;
-    let parsedQuestions = [];
-
-    if (questions && Array.isArray(questions)) {
-      parsedQuestions = questions;
-    } else if (rawText) {
-      let cleanedText = rawText
-        .replace(/🎓[^\n]*/g, '')          
-        .replace(/advertisement/gi, '')          
-        .replace(/View\s*Answer/gi, '')          
-        .replace(/FoodAnswer:/gi, 'Answer:');     
-
-      const blocks = cleanedText
-        .split(/(?=\b\d+[\.\)]\s)/)
-        .filter(b => b.trim().length > 0);
-
-      for (let block of blocks) {
-        try {
-          const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
-          if (lines.length === 0) continue;
-
-          let questionText = lines[0].replace(/^\d+[\.\)]\s*/, '');
-          let optA = '', optB = '', optC = '', optD = '';
-          let correctAnswer = 'A';
-          let explanation = '';
-
-          for (let i = 1; i < lines.length; i++) {
-            const line = lines[i];
-            if (line.toLowerCase().startsWith('a)')) optA = line.replace(/^a\)\s*/i, '');
-            else if (line.toLowerCase().startsWith('b)')) optB = line.replace(/^b\)\s*/i, '');
-            else if (line.toLowerCase().startsWith('c)')) optC = line.replace(/^c\)\s*/i, '');
-            else if (line.toLowerCase().startsWith('d)')) optD = line.replace(/^d\)\s*/i, '');
-            else if (line.toLowerCase().startsWith('answer:')) {
-              const match = line.match(/answer:\s*([a-d])/i);
-              if (match) correctAnswer = match[1].toUpperCase();
-            } else if (line.toLowerCase().startsWith('explanation:')) {
-              explanation = line.replace(/^explanation:\s*/i, '');
-            } else if (explanation) {
-              explanation += ' ' + line;
-            }
-          }
-
-          if (questionText && optA && optB) {
-            parsedQuestions.push({
-              subject: subject || 'General',
-              questionText,
-              optionA: optA,
-              optionB: optB,
-              optionC: optC,
-              optionD: optD,
-              correctAnswer,
-              explanation
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({
+                error: 'Authentication required.'
             });
-          }
-        } catch (err) {
-          console.error('Parsing error on single question block:', err);
-        }
-      }
-    }
-
-    if (parsedQuestions.length === 0) {
-      return res.status(400).json({ error: 'ምንም ጥያቄ መለየት አልተቻለም። እባክዎ የፅሁፉን ቅርጸት ያረጋግጡ።' });
-    }
-
-    await QuestionBank.insertMany(parsedQuestions);
-
-    res.status(200).json({
-      message: `${parsedQuestions.length} ጥያቄዎች በተሳካ ሁኔታ ተለይተው ወደ ፈተና ባንክ ተመዝግበዋል!`,
-      count: parsedQuestions.length
-    });
-
-  } catch (err) {
-    console.error('Bulk Parse Error:', err);
-    res.status(500).json({ error: 'ጥያቄዎችን በመጫን ላይ የሲስተም ስህተት ተፈጥሯል' });
-  }
-});
-
-// ==========================================
-// QUESTION BANK DELETE ROUTES
-// ==========================================
-router.delete('/admin/question-bank/all', async (req, res) => {
-  try {
-    await QuestionBank.deleteMany({});
-    res.status(200).json({ message: 'ሁሉም ጥያቄዎች በተሳካ ሁኔታ ተሰርዘዋል!' });
-  } catch (err) {
-    res.status(500).json({ error: 'ሁሉንም ጥያቄዎች በመሰረዝ ላይ ስህተት ተፈጥሯል' });
-  }
-});
-
-router.delete('/admin/question-bank/subject/:subject', async (req, res) => {
-  try {
-    const subjectName = decodeURIComponent(req.params.subject);
-    
-    const result = await QuestionBank.deleteMany({ 
-      subject: { $regex: new RegExp(`^${subjectName}$`, 'i') } 
-    });
-
-    res.status(200).json({ 
-      message: `የ "${subjectName}" ትምህርት ጥያቄዎች በሙሉ ተሰርዘዋል!`,
-      deletedCount: result.deletedCount 
-    });
-  } catch (err) {
-    console.error('Error deleting questions by subject:', err);
-    res.status(500).json({ error: 'ጥያቄዎችን በመሰረዝ ላይ ስህተት ተፈጥሯል' });
-  }
-});
-
-router.delete('/admin/question-bank/:id', async (req, res) => {
-  try {
-    const deletedQuestion = await QuestionBank.findByIdAndDelete(req.params.id);
-    if (!deletedQuestion) {
-      return res.status(404).json({ error: 'ጥያቄው አልተገኘም!' });
-    }
-    res.status(200).json({ message: 'ጥያቄው በተሳካ ሁኔታ ተሰርዟል!' });
-  } catch (err) {
-    res.status(500).json({ error: 'ጥያቄውን በመሰረዝ ላይ ስህተት ተፈጥሯል' });
-  }
-});
-
-// ==========================================
-// EXAM & CONTENT ROUTES (Public/User)
-// ==========================================
-router.get('/exams', async (req, res) => {
-    try {
-        const exams = await Exam.find({}, 'title subject examDate resultReleaseDate duration');
-        res.json(exams);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.get('/exams/:id', async (req, res) => {
-    try {
-        const exam = await Exam.findById(req.params.id);
-        if (!exam) return res.status(404).json({ error: 'ፈተናው አልተገኘም' });
-
-        const questions = await QuestionBank.find({ subject: exam.subject }).limit(20); 
-        
-        res.json({ exam, questions });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.post('/exams/:id/submit', async (req, res) => {
-    try {
-        const { answers } = req.body; 
-        let score = 0;
-        let total = Object.keys(answers).length;
-
-        for (let qId in answers) {
-            const question = await QuestionBank.findById(qId);
-            if (question && question.correctAnswer === answers[qId]) {
-                score++;
-            }
         }
 
-        const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+        const token = authHeader.split(' ')[1];
 
-        res.status(200).json({ 
-            message: 'ፈተናው ተጠናቋል',
-            score: percentage,
-            correctCount: score,
-            totalQuestions: total
+        const decoded = jwt.verify(token, JWT_SECRET);
+
+        req.user = decoded;
+
+        next();
+    } catch (error) {
+        return res.status(401).json({
+            error: 'Invalid or expired authentication token.'
         });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
     }
-});      
+}
 
-router.get('/contents', async (req, res) => {
-    try {
-        const contents = await Content.find().sort({ createdAt: -1 });
-        res.json(contents);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.post('/contents', async (req, res) => {
-    try {
-        const { title, description, type } = req.body;
-        const newContent = new Content({ title, description, type });
-        await newContent.save();
-        res.status(201).json({ message: 'መረጃው በተሳካ ሁኔታ ተለቋል!' });
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
-});
-
-// ==========================================
-// ADMIN STATS & MANAGEMENT ROUTES
-// ==========================================
-router.get('/admin/stats', async (req, res) => {
-    try {
-        const totalStudents = await Student.countDocuments();
-        const totalTeachers = await User.countDocuments({ role: 'teacher' });
-        const totalHR = await User.countDocuments({ role: 'hr' }); 
-        const totalExams = await Exam.countDocuments();
-        
-        res.status(200).json({ totalStudents, totalTeachers, totalHR, totalExams });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.post('/admin/users', async (req, res) => {
-    try {
-        const { name, email, password, role } = req.body;
-        
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password || '123456', salt);
-
-        const newUser = new User({
-            name,
-            email,
-            password: hashedPassword,
-            role: role || 'student'
-        });
-
-        await newUser.save();
-        res.status(201).json({ message: 'ተጠቃሚው (ሰራተኛው/ተማሪው) በተሳካ ሁኔታ ተመዝግቧል!' });
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
-});
-
-router.get('/admin/exams', async (req, res) => {
-    try {
-        const exams = await Exam.find().sort({ createdAt: -1 });
-        res.status(200).json(exams);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.post('/admin/exams', async (req, res) => {
-    try {
-        const { title, subject, examDate, resultReleaseDate, duration } = req.body;
-
-        const newExam = new Exam({
-            title,
-            subject,
-            examDate,
-            resultReleaseDate,
-            duration
-        });
-
-        await newExam.save();
-        res.status(201).json({ message: 'ፈተናው እና ቀናቱ ተይዘዋል!' });
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
-});
-
-router.put('/admin/exams/:id', async (req, res) => {
-    try {
-        const { title, subject, examDate, resultReleaseDate, duration } = req.body;
-        
-        const updatedExam = await Exam.findByIdAndUpdate(
-            req.params.id,
-            { title, subject, examDate, resultReleaseDate, duration },
-            { new: true }
-        );
-
-        if (!updatedExam) {
-            return res.status(404).json({ error: 'ፈተናው አልተገኘም!' });
+function authorize(...roles) {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({
+                error: 'Authentication required.'
+            });
         }
 
-        res.status(200).json({ message: 'ፈተናው በተሳካ ሁኔታ ተስተካክሏል!', updatedExam });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.delete('/admin/exams/:id', async (req, res) => {
-    try {
-        const deletedExam = await Exam.findByIdAndDelete(req.params.id);
-        if (!deletedExam) {
-            return res.status(404).json({ error: 'ፈተናው አልተገኘም!' });
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({
+                error: 'You do not have permission to perform this action.'
+            });
         }
-        res.status(200).json({ message: 'ፈተናው በተሳካ ሁኔታ ተሰርዟል!' });
-    } catch (err)  {
-        res.status(500).json({ error: err.message });
-    }
-});
+
+        next();
+    };
+}
 
 // ==========================================
-// AUTH & ADMIN SETUP ROUTES
+// AUTH
 // ==========================================
+
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        
-        const user = await User.findOne({ email });
+
+        if (!email || !password) {
+            return res.status(400).json({
+                error: 'Email and password are required.'
+            });
+        }
+
+        const user = await User.findOne({
+            email: email.toLowerCase().trim()
+        });
+
         if (!user) {
-            return res.status(400).json({ error: 'ኢሜይል ወይም የይለፍ ቃል ስህተት ነው!' });
+            return res.status(401).json({
+                error: 'ኢሜይል ወይም የይለፍ ቃል ስህተት ነው!'
+            });
         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ error: 'ኢሜይል ወይም የይለፍ ቃል ስህተት ነው!' });
+        const validPassword = await bcrypt.compare(
+            password,
+            user.password
+        );
+
+        if (!validPassword) {
+            return res.status(401).json({
+                error: 'ኢሜይል ወይም የይለፍ ቃል ስህተት ነው!'
+            });
         }
 
-        res.status(200).json({
+        const token = generateToken(user);
+
+        res.json({
+            success: true,
             message: 'በተሳካ ሁኔታ ገብተዋል!',
-            token: user._id, 
-            role: user.role, 
-            name: user.name,
-            email: user.email
+            token,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+            }
         });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    } catch (error) {
+        console.error('Login error:', error);
+
+        res.status(500).json({
+            error: 'Login failed.'
+        });
     }
 });
 
-router.get('/register-admin', async (req, res) => {
+// ==========================================
+// CURRENT USER
+// ==========================================
+
+router.get('/auth/me', authenticate, async (req, res) => {
     try {
-        const email = 'admin@max.com';
-        const password = 'adminpassword123';
-        const name = 'ማክ ዋና አድሚን';
+        const user = await User.findById(req.user.id)
+            .select('-password');
 
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ error: 'ይህ አድሚን ቀድሞ ተመዝግቧል!' });
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        const newAdmin = new User({
-            name,
-            email,
-            password: hashedPassword,
-            role: 'admin'
-        });
-
-        await newAdmin.save();
-        res.status(201).json({ 
-            message: 'አድሚኑ በተሳካ ሁኔታ ተፈጥሯል!',
-            email: email,
-            password: password 
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.put('/admin/change-password', async (req, res) => {
-    try {
-        const { email, newPassword } = req.body;
-
-        const user = await User.findOne({ email, role: 'admin' });
         if (!user) {
-            return res.status(404).json({ error: 'አድሚኑ አልተገኘም!' });
+            return res.status(404).json({
+                error: 'User not found.'
+            });
         }
 
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(newPassword, salt);
-        await user.save();
-
-        res.status(200).json({ message: 'የአድሚኑ የይለፍ ቃል በተሳካ ሁኔታ ተቀይሯል!' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.json({
+            success: true,
+            user
+        });
+    } catch (error) {
+        res.status(500).json({
+            error: error.message
+        });
     }
 });
+
+// ==========================================
+// CHANGE PASSWORD
+// ==========================================
+
+router.put(
+    '/users/change-password',
+    authenticate,
+    async (req, res) => {
+        try {
+            const {
+                oldPassword,
+                newPassword
+            } = req.body;
+
+            if (!oldPassword || !newPassword) {
+                return res.status(400).json({
+                    error: 'Old and new passwords are required.'
+                });
+            }
+
+            if (newPassword.length < 6) {
+                return res.status(400).json({
+                    error: 'New password must contain at least 6 characters.'
+                });
+            }
+
+            const user = await User.findById(req.user.id);
+
+            if (!user) {
+                return res.status(404).json({
+                    error: 'User not found.'
+                });
+            }
+
+            const valid = await bcrypt.compare(
+                oldPassword,
+                user.password
+            );
+
+            if (!valid) {
+                return res.status(400).json({
+                    error: 'የድሮው የይለፍ ቃል ስህተት ነው!'
+                });
+            }
+
+            user.password = await bcrypt.hash(
+                newPassword,
+                12
+            );
+
+            await user.save();
+
+            res.json({
+                success: true,
+                message: 'የይለፍ ቃልዎ ተቀይሯል!'
+            });
+        } catch (error) {
+            res.status(500).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+// ==========================================
+// STUDENT ROUTES
+// ==========================================
+
+router.get(
+    '/hr/students',
+    authenticate,
+    authorize('hr', 'admin'),
+    async (req, res) => {
+        try {
+            const students = await Student.find()
+                .sort({ createdAt: -1 });
+
+            res.json(students);
+        } catch (error) {
+            res.status(500).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+router.post(
+    '/hr/students',
+    authenticate,
+    authorize('hr', 'admin'),
+    async (req, res) => {
+        try {
+            const existing = await Student.findOne({
+                studentIdNumber: req.body.studentIdNumber
+            });
+
+            if (existing) {
+                return res.status(409).json({
+                    error: 'ይህ የተማሪ መታወቂያ ቀድሞ ተመዝግቧል!'
+                });
+            }
+
+            const student = await Student.create(req.body);
+
+            res.status(201).json({
+                success: true,
+                message: 'ተማሪው ተመዝግቧል!',
+                student
+            });
+        } catch (error) {
+            res.status(400).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+router.put(
+    '/hr/students/:id',
+    authenticate,
+    authorize('hr', 'admin'),
+    async (req, res) => {
+        try {
+            const student =
+                await Student.findByIdAndUpdate(
+                    req.params.id,
+                    req.body,
+                    {
+                        new: true,
+                        runValidators: true
+                    }
+                );
+
+            if (!student) {
+                return res.status(404).json({
+                    error: 'ተማሪው አልተገኘም!'
+                });
+            }
+
+            res.json({
+                success: true,
+                message: 'የተማሪው መረጃ ተሻሽሏል!',
+                student
+            });
+        } catch (error) {
+            res.status(400).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+router.delete(
+    '/hr/students/:id',
+    authenticate,
+    authorize('hr', 'admin'),
+    async (req, res) => {
+        try {
+            const student =
+                await Student.findByIdAndDelete(
+                    req.params.id
+                );
+
+            if (!student) {
+                return res.status(404).json({
+                    error: 'ተማሪው አልተገኘም!'
+                });
+            }
+
+            res.json({
+                success: true,
+                message: 'ተማሪው ተሰርዟል!'
+            });
+        } catch (error) {
+            res.status(500).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+// ==========================================
+// QUESTION BANK
+// ==========================================
+
+router.get(
+    '/admin/question-bank',
+    authenticate,
+    authorize('admin', 'teacher'),
+    async (req, res) => {
+        try {
+            const questions =
+                await QuestionBank.find()
+                    .sort({ createdAt: -1 });
+
+            res.json(questions);
+        } catch (error) {
+            res.status(500).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+router.post(
+    '/admin/question-bank/add',
+    authenticate,
+    authorize('admin', 'teacher'),
+    async (req, res) => {
+        try {
+            const {
+                subject,
+                questionText,
+                optionA,
+                optionB,
+                optionC,
+                optionD,
+                correctAnswer,
+                explanation
+            } = req.body;
+
+            if (
+                !subject ||
+                !questionText ||
+                !optionA ||
+                !optionB
+            ) {
+                return res.status(400).json({
+                    error:
+                        'Subject, question, A and B are required.'
+                });
+            }
+
+            if (!['A', 'B', 'C', 'D'].includes(correctAnswer)) {
+                return res.status(400).json({
+                    error: 'Invalid correct answer.'
+                });
+            }
+
+            const question =
+                await QuestionBank.create({
+                    subject,
+                    questionText,
+                    optionA,
+                    optionB,
+                    optionC,
+                    optionD,
+                    correctAnswer,
+                    explanation
+                });
+
+            res.status(201).json({
+                success: true,
+                message: 'ጥያቄው ተመዝግቧል!',
+                question
+            });
+        } catch (error) {
+            res.status(400).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+router.delete(
+    '/admin/question-bank/:id',
+    authenticate,
+    authorize('admin', 'teacher'),
+    async (req, res) => {
+        try {
+            const question =
+                await QuestionBank.findByIdAndDelete(
+                    req.params.id
+                );
+
+            if (!question) {
+                return res.status(404).json({
+                    error: 'ጥያቄው አልተገኘም!'
+                });
+            }
+
+            res.json({
+                success: true,
+                message: 'ጥያቄው ተሰርዟል!'
+            });
+        } catch (error) {
+            res.status(500).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+// ==========================================
+// EXAMS - STUDENT
+// ==========================================
+
+// Important:
+// correctAnswer is deliberately NOT returned.
+
+router.get(
+    '/exams',
+    authenticate,
+    async (req, res) => {
+        try {
+            const exams = await Exam.find({
+                isPublished: true
+            })
+                .select(
+                    'title subject examDate resultReleaseDate duration questionLimit passingScore'
+                )
+                .sort({ examDate: 1 });
+
+            res.json(exams);
+        } catch (error) {
+            res.status(500).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+router.get(
+    '/exams/:id',
+    authenticate,
+    authorize('student'),
+    async (req, res) => {
+        try {
+            const exam =
+                await Exam.findById(req.params.id);
+
+            if (!exam) {
+                return res.status(404).json({
+                    error: 'ፈተናው አልተገኘም!'
+                });
+            }
+
+            if (!exam.isPublished) {
+                return res.status(403).json({
+                    error: 'ይህ ፈተና አሁን አይገኝም።'
+                });
+            }
+
+            const existingSubmission =
+                await ExamSubmission.findOne({
+                    exam: exam._id,
+                    student: req.user.id
+                });
+
+            if (existingSubmission) {
+                return res.status(409).json({
+                    error: 'ይህን ፈተና አስቀድመው ሰጥተዋል።'
+                });
+            }
+
+            const questions =
+                await QuestionBank.find({
+                    subject: exam.subject
+                })
+                    .select(
+                        '_id subject questionText optionA optionB optionC optionD'
+                    )
+                    .limit(exam.questionLimit);
+
+            res.json({
+                success: true,
+                exam,
+                questions
+            });
+        } catch (error) {
+            console.error(error);
+
+            res.status(500).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+// ==========================================
+// SUBMIT EXAM
+// ==========================================
+
+router.post(
+    '/exams/:id/submit',
+    authenticate,
+    authorize('student'),
+    async (req, res) => {
+        try {
+            const { answers } = req.body;
+
+            if (
+                !answers ||
+                typeof answers !== 'object' ||
+                Array.isArray(answers)
+            ) {
+                return res.status(400).json({
+                    error: 'Invalid answer format.'
+                });
+            }
+
+            const exam =
+                await Exam.findById(req.params.id);
+
+            if (!exam) {
+                return res.status(404).json({
+                    error: 'ፈተናው አልተገኘም!'
+                });
+            }
+
+            const existing =
+                await ExamSubmission.findOne({
+                    exam: exam._id,
+                    student: req.user.id
+                });
+
+            if (existing) {
+                return res.status(409).json({
+                    error: 'ይህን ፈተና አስቀድመው ሰጥተዋል።'
+                });
+            }
+
+            const questions =
+                await QuestionBank.find({
+                    subject: exam.subject
+                })
+                    .limit(exam.questionLimit);
+
+            let correctCount = 0;
+
+            questions.forEach((question) => {
+                const selected =
+                    answers[question._id.toString()];
+
+                if (
+                    selected &&
+                    selected === question.correctAnswer
+                ) {
+                    correctCount++;
+                }
+            });
+
+            const totalQuestions =
+                questions.length;
+
+            const answeredQuestions =
+                questions.filter(
+                    (question) =>
+                        answers[question._id.toString()]
+                ).length;
+
+            const score =
+                totalQuestions > 0
+                    ? Math.round(
+                        (correctCount / totalQuestions) *
+                        100
+                    )
+                    : 0;
+
+            const passed =
+                score >= exam.passingScore;
+
+            const submission =
+                await ExamSubmission.create({
+                    student: req.user.id,
+                    exam: exam._id,
+                    answers,
+                    correctCount,
+                    totalQuestions,
+                    answeredQuestions,
+                    score,
+                    passed
+                });
+
+            res.status(201).json({
+                success: true,
+                message: 'ፈተናው በተሳካ ሁኔታ ገብቷል!',
+                score,
+                correctCount,
+                totalQuestions,
+                answeredQuestions,
+                passed,
+                submissionId: submission._id
+            });
+        } catch (error) {
+            console.error('Submit exam:', error);
+
+            if (error.code === 11000) {
+                return res.status(409).json({
+                    error: 'ይህን ፈተና አስቀድመው ሰጥተዋል።'
+                });
+            }
+
+            res.status(500).json({
+                error: 'ፈተናውን ማስገባት አልተቻለም።'
+            });
+        }
+    }
+);
+
+// ==========================================
+// CONTENT
+// ==========================================
+
+router.get(
+    '/contents',
+    authenticate,
+    async (req, res) => {
+        try {
+            const contents =
+                await Content.find()
+                    .populate('author', 'name email')
+                    .sort({ createdAt: -1 });
+
+            res.json(contents);
+        } catch (error) {
+            res.status(500).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+router.post(
+    '/contents',
+    authenticate,
+    authorize('teacher', 'admin'),
+    async (req, res) => {
+        try {
+            const {
+                title,
+                description,
+                type
+            } = req.body;
+
+            if (!title || !description) {
+                return res.status(400).json({
+                    error:
+                        'Title and description are required.'
+                });
+            }
+
+            const content =
+                await Content.create({
+                    title: title.trim(),
+                    description: description.trim(),
+                    type: type || 'general',
+                    author: req.user.id
+                });
+
+            res.status(201).json({
+                success: true,
+                message: 'መረጃው በተሳካ ሁኔታ ተለቋል!',
+                content
+            });
+        } catch (error) {
+            res.status(400).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+// ==========================================
+// ADMIN USER CREATION
+// ==========================================
+
+router.post(
+    '/admin/users',
+    authenticate,
+    authorize('admin'),
+    async (req, res) => {
+        try {
+            const {
+                name,
+                email,
+                password,
+                role
+            } = req.body;
+
+            if (!name || !email || !password) {
+                return res.status(400).json({
+                    error:
+                        'Name, email and password are required.'
+                });
+            }
+
+            if (password.length < 6) {
+                return res.status(400).json({
+                    error:
+                        'Password must contain at least 6 characters.'
+                });
+            }
+
+            const existing =
+                await User.findOne({
+                    email: email.toLowerCase().trim()
+                });
+
+            if (existing) {
+                return res.status(409).json({
+                    error:
+                        'ይህ ኢሜይል ቀድሞ ተመዝግቧል!'
+                });
+            }
+
+            const hashed =
+                await bcrypt.hash(password, 12);
+
+            const user =
+                await User.create({
+                    name: name.trim(),
+                    email: email.toLowerCase().trim(),
+                    password: hashed,
+                    role: role || 'student'
+                });
+
+            res.status(201).json({
+                success: true,
+                message: 'ተጠቃሚው ተፈጥሯል!',
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role
+                }
+            });
+        } catch (error) {
+            res.status(400).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+// ==========================================
+// ADMIN STATS
+// ==========================================
+
+router.get(
+    '/admin/stats',
+    authenticate,
+    authorize('admin'),
+    async (req, res) => {
+        try {
+            const [
+                totalStudents,
+                totalTeachers,
+                totalHR,
+                totalExams,
+                totalQuestions
+            ] = await Promise.all([
+                Student.countDocuments(),
+                User.countDocuments({
+                    role: 'teacher'
+                }),
+                User.countDocuments({
+                    role: 'hr'
+                }),
+                Exam.countDocuments(),
+                QuestionBank.countDocuments()
+            ]);
+
+            res.json({
+                totalStudents,
+                totalTeachers,
+                totalHR,
+                totalExams,
+                totalQuestions
+            });
+        } catch (error) {
+            res.status(500).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+// ==========================================
+// ADMIN EXAMS
+// ==========================================
+
+router.get(
+    '/admin/exams',
+    authenticate,
+    authorize('admin', 'teacher'),
+    async (req, res) => {
+        try {
+            const exams =
+                await Exam.find()
+                    .sort({ createdAt: -1 });
+
+            res.json(exams);
+        } catch (error) {
+            res.status(500).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+router.post(
+    '/admin/exams',
+    authenticate,
+    authorize('admin', 'teacher'),
+    async (req, res) => {
+        try {
+            const {
+                title,
+                subject,
+                examDate,
+                resultReleaseDate,
+                duration,
+                questionLimit,
+                passingScore
+            } = req.body;
+
+            if (
+                !title ||
+                !subject ||
+                !examDate ||
+                !resultReleaseDate ||
+                !duration
+            ) {
+                return res.status(400).json({
+                    error:
+                        'Please complete all required exam fields.'
+                });
+            }
+
+            const exam =
+                await Exam.create({
+                    title,
+                    subject,
+                    examDate,
+                    resultReleaseDate,
+                    duration,
+                    questionLimit:
+                        Number(questionLimit) || 20,
+                    passingScore:
+                        Number(passingScore) || 50
+                });
+
+            res.status(201).json({
+                success: true,
+                message: 'ፈተናው ተፈጥሯል!',
+                exam
+            });
+        } catch (error) {
+            res.status(400).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+router.put(
+    '/admin/exams/:id',
+    authenticate,
+    authorize('admin', 'teacher'),
+    async (req, res) => {
+        try {
+            const exam =
+                await Exam.findByIdAndUpdate(
+                    req.params.id,
+                    req.body,
+                    {
+                        new: true,
+                        runValidators: true
+                    }
+                );
+
+            if (!exam) {
+                return res.status(404).json({
+                    error: 'ፈተናው አልተገኘም!'
+                });
+            }
+
+            res.json({
+                success: true,
+                message: 'ፈተናው ተስተካክሏል!',
+                exam
+            });
+        } catch (error) {
+            res.status(400).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+router.delete(
+    '/admin/exams/:id',
+    authenticate,
+    authorize('admin'),
+    async (req, res) => {
+        try {
+            const exam =
+                await Exam.findByIdAndDelete(
+                    req.params.id
+                );
+
+            if (!exam) {
+                return res.status(404).json({
+                    error: 'ፈተናው አልተገኘም!'
+                });
+            }
+
+            await ExamSubmission.deleteMany({
+                exam: exam._id
+            });
+
+            res.json({
+                success: true,
+                message: 'ፈተናው ተሰርዟል!'
+            });
+        } catch (error) {
+            res.status(500).json({
+                error: error.message
+            });
+        }
+    }
+);
+
+// ==========================================
+// EXCEL USER IMPORT
+// ==========================================
+
+router.post(
+    '/users/upload-excel',
+    authenticate,
+    authorize('admin'),
+    upload.single('file'),
+    async (req, res) => {
+        let filePath = null;
+
+        try {
+            if (!req.file) {
+                return res.status(400).json({
+                    error:
+                        'እባክዎ Excel ፋይል ይጫኑ!'
+                });
+            }
+
+            filePath = req.file.path;
+
+            const workbook =
+                xlsx.readFile(filePath);
+
+            const sheet =
+                workbook.Sheets[
+                    workbook.SheetNames[0]
+                ];
+
+            const rows =
+                xlsx.utils.sheet_to_json(sheet);
+
+            if (!rows.length) {
+                return res.status(400).json({
+                    error:
+                        'የExcel ፋይሉ ባዶ ነው!'
+                });
+            }
+
+            let created = 0;
+            let updated = 0;
+
+            for (const row of rows) {
+                if (!row.email) continue;
+
+                const email =
+                    String(row.email)
+                        .trim()
+                        .toLowerCase();
+
+                const password =
+                    String(
+                        row.password || '123456'
+                    );
+
+                const hashed =
+                    await bcrypt.hash(
+                        password,
+                        12
+                    );
+
+                const existing =
+                    await User.findOne({
+                        email
+                    });
+
+                if (existing) {
+                    existing.name =
+                        row.name ||
+                        existing.name;
+
+                    existing.password = hashed;
+
+                    existing.role =
+                        row.role ||
+                        existing.role;
+
+                    await existing.save();
+
+                    updated++;
+                } else {
+                    await User.create({
+                        name:
+                            row.name ||
+                            'User',
+                        email,
+                        password: hashed,
+                        role:
+                            row.role ||
+                            'student'
+                    });
+
+                    created++;
+                }
+            }
+
+            res.json({
+                success: true,
+                message:
+                    'Excel import completed.',
+                created,
+                updated
+            });
+        } catch (error) {
+            console.error(
+                'Excel import:',
+                error
+            );
+
+            res.status(500).json({
+                error: error.message
+            });
+        } finally {
+            if (
+                filePath &&
+                fs.existsSync(filePath)
+            ) {
+                fs.unlink(
+                    filePath,
+                    () => {}
+                );
+            }
+        }
+    }
+);
+
+// ==========================================
+// EXPORT
+// ==========================================
 
 module.exports = router;
