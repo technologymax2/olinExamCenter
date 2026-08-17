@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 10000;
 const MONGO_URI = process.env.MONGO_URI;
 
 // ==========================================
-// CORS CONFIGURATION
+// CORS
 // ==========================================
 
 const allowedOrigins = [
@@ -18,55 +18,43 @@ const allowedOrigins = [
     'http://localhost:3001'
 ];
 
-app.use(cors({
-    origin: function (origin, callback) {
+app.use(
+    cors({
+        origin: function (origin, callback) {
+            // Allow requests without origin
+            // such as Postman/server-to-server
+            if (!origin) {
+                return callback(null, true);
+            }
 
-        // Allow requests without origin
-        // Example: Postman, Render health checks
-        if (!origin) {
-            return callback(null, true);
-        }
+            if (allowedOrigins.includes(origin)) {
+                return callback(null, true);
+            }
 
-        if (allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
+            console.log('Blocked CORS origin:', origin);
 
-        console.log('Blocked CORS origin:', origin);
+            return callback(
+                new Error('Not allowed by CORS')
+            );
+        },
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+        allowedHeaders: [
+            'Content-Type',
+            'Authorization'
+        ]
+    })
+);
 
-        return callback(
-            new Error('Not allowed by CORS')
-        );
-    },
-
-    methods: [
-        'GET',
-        'POST',
-        'PUT',
-        'DELETE',
-        'PATCH',
-        'OPTIONS'
-    ],
-
-    allowedHeaders: [
-        'Content-Type',
-        'Authorization'
-    ],
-
-    credentials: true
-}));
-
-// Handle preflight requests
+// Explicit preflight
 app.options('*', cors());
 
 // ==========================================
-// BODY PARSER
+// BODY PARSERS
 // ==========================================
 
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({
-    extended: true,
-    limit: '10mb'
-}));
+app.use(express.urlencoded({ extended: true }));
 
 // ==========================================
 // HEALTH CHECK
@@ -76,24 +64,31 @@ app.get('/', (req, res) => {
     res.status(200).json({
         success: true,
         message: 'Olin Exam Center API is running',
-        database: mongoose.connection.readyState === 1
-            ? 'connected'
-            : 'disconnected'
+        status: 'online'
+    });
+});
+
+app.get('/api/health', (req, res) => {
+    res.status(200).json({
+        success: true,
+        message: 'API is healthy'
     });
 });
 
 // ==========================================
-// MONGODB CONNECTION
+// MONGODB
 // ==========================================
 
-mongoose.connect(MONGO_URI)
+mongoose
+    .connect(MONGO_URI)
     .then(() => {
-        console.log('==========================================');
         console.log('MongoDB Atlas Successfully Connected!');
-        console.log('==========================================');
     })
     .catch((err) => {
-        console.error('MongoDB Connection Error:', err);
+        console.error(
+            'Database Connection Error:',
+            err.message
+        );
     });
 
 // ==========================================
@@ -105,7 +100,7 @@ const mainRoutes = require('./routes');
 app.use('/api', mainRoutes);
 
 // ==========================================
-// 404 HANDLER
+// 404
 // ==========================================
 
 app.use((req, res) => {
@@ -117,7 +112,7 @@ app.use((req, res) => {
 });
 
 // ==========================================
-// GLOBAL ERROR HANDLER
+// ERROR HANDLER
 // ==========================================
 
 app.use((err, req, res, next) => {
@@ -141,8 +136,7 @@ app.use((err, req, res, next) => {
 // ==========================================
 
 app.listen(PORT, () => {
-    console.log('==========================================');
-    console.log(`Olin Exam Center Server running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
-    console.log('==========================================');
+    console.log(
+        `Olin Exam Center Server running on port ${PORT}`
+    );
 });
