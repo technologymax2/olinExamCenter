@@ -1,22 +1,6 @@
 import React, { useState } from 'react';
 
-/*
-=============================================================
- STUDENT PRINT CART PAGE
- HR MODULE
-=============================================================
 
-This page is part of the HR system.
-
-HR navigation:
-  /hr
-  /hr/employees
-  /hr/students
-  /hr/print
-
-If your actual routes are different, change HR_ROUTES below.
-=============================================================
-*/
 
 function StudentPrintCartPage({ handleLogout }) {
   // =========================================================
