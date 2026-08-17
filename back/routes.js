@@ -11,10 +11,8 @@ const upload = multer({ dest: 'uploads/' });
 const { User, Student, Exam, Content, QuestionBank } = require('./models');
 
 // ==========================================
-// USER ROUTES
+// USER ROUTES (Excel Upload)
 // ==========================================
-
-// Upload and register users from an Excel file
 router.post('/users/upload-excel', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
@@ -54,8 +52,6 @@ router.post('/users/upload-excel', upload.single('file'), async (req, res) => {
 // ==========================================
 // HR / STUDENT REGISTRATION ROUTES
 // ==========================================
-
-// 1. ሁሉንም የተመዘገቡ ተማሪዎች ማምጣት (Get All Students)
 router.get('/hr/students', async (req, res) => {
     try {
         const students = await Student.find().sort({ createdAt: -1 });
@@ -65,7 +61,6 @@ router.get('/hr/students', async (req, res) => {
     }
 });
 
-// 2. አዲስ ተማሪ መዝግብ (Register Student - አዳዲስ የኮሌጅ ፊልዶችን ጨምሮ)
 router.post('/hr/students', async (req, res) => {
     try {
         const studentData = req.body;
@@ -84,7 +79,6 @@ router.post('/hr/students', async (req, res) => {
     }
 });
 
-// 3. የተማሪን መረጃ ማስተካከል (Update Student)
 router.put('/hr/students/:id', async (req, res) => {
     try {
         const updatedStudent = await Student.findByIdAndUpdate(
@@ -103,7 +97,6 @@ router.put('/hr/students/:id', async (req, res) => {
     }
 });
 
-// 4. ተማሪን ከሲስተም መሰረዝ (Delete Student)
 router.delete('/hr/students/:id', async (req, res) => {
     try {
         const deletedStudent = await Student.findByIdAndDelete(req.params.id);
@@ -116,7 +109,6 @@ router.delete('/hr/students/:id', async (req, res) => {
     }
 });
 
-// 5. ለ QR ማረጋገጫ (Verify Student ID)
 router.get('/students/verify/:id', async (req, res) => {
     try {
         const student = await Student.findById(req.params.id);
@@ -132,7 +124,6 @@ router.get('/students/verify/:id', async (req, res) => {
 // ==========================================
 // PASSWORD MANAGEMENT ROUTES
 // ==========================================
-
 router.put('/users/change-password', async (req, res) => {
     try {
         const { email, oldPassword, newPassword } = req.body;
@@ -222,7 +213,6 @@ router.put('/users/reset-password-with-approval', async (req, res) => {
 // ==========================================
 // QUESTION BANK ROUTES
 // ==========================================
-
 router.get('/admin/question-bank', async (req, res) => {
     try {
         const questions = await QuestionBank.find().sort({ createdAt: -1 });
@@ -338,9 +328,50 @@ router.post('/admin/question-bank/bulk-add', async (req, res) => {
 });
 
 // ==========================================
-// EXAM & CONTENT ROUTES
+// QUESTION BANK DELETE ROUTES
 // ==========================================
+router.delete('/admin/question-bank/all', async (req, res) => {
+  try {
+    await QuestionBank.deleteMany({});
+    res.status(200).json({ message: 'ሁሉም ጥያቄዎች በተሳካ ሁኔታ ተሰርዘዋል!' });
+  } catch (err) {
+    res.status(500).json({ error: 'ሁሉንም ጥያቄዎች በመሰረዝ ላይ ስህተት ተፈጥሯል' });
+  }
+});
 
+router.delete('/admin/question-bank/subject/:subject', async (req, res) => {
+  try {
+    const subjectName = decodeURIComponent(req.params.subject);
+    
+    const result = await QuestionBank.deleteMany({ 
+      subject: { $regex: new RegExp(`^${subjectName}$`, 'i') } 
+    });
+
+    res.status(200).json({ 
+      message: `የ "${subjectName}" ትምህርት ጥያቄዎች በሙሉ ተሰርዘዋል!`,
+      deletedCount: result.deletedCount 
+    });
+  } catch (err) {
+    console.error('Error deleting questions by subject:', err);
+    res.status(500).json({ error: 'ጥያቄዎችን በመሰረዝ ላይ ስህተት ተፈጥሯል' });
+  }
+});
+
+router.delete('/admin/question-bank/:id', async (req, res) => {
+  try {
+    const deletedQuestion = await QuestionBank.findByIdAndDelete(req.params.id);
+    if (!deletedQuestion) {
+      return res.status(404).json({ error: 'ጥያቄው አልተገኘም!' });
+    }
+    res.status(200).json({ message: 'ጥያቄው በተሳካ ሁኔታ ተሰርዟል!' });
+  } catch (err) {
+    res.status(500).json({ error: 'ጥያቄውን በመሰረዝ ላይ ስህተት ተፈጥሯል' });
+  }
+});
+
+// ==========================================
+// EXAM & CONTENT ROUTES (Public/User)
+// ==========================================
 router.get('/exams', async (req, res) => {
     try {
         const exams = await Exam.find({}, 'title subject examDate resultReleaseDate duration');
@@ -349,6 +380,45 @@ router.get('/exams', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+router.get('/exams/:id', async (req, res) => {
+    try {
+        const exam = await Exam.findById(req.params.id);
+        if (!exam) return res.status(404).json({ error: 'ፈተናው አልተገኘም' });
+
+        const questions = await QuestionBank.find({ subject: exam.subject }).limit(20); 
+        
+        res.json({ exam, questions });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/exams/:id/submit', async (req, res) => {
+    try {
+        const { answers } = req.body; 
+        let score = 0;
+        let total = Object.keys(answers).length;
+
+        for (let qId in answers) {
+            const question = await QuestionBank.findById(qId);
+            if (question && question.correctAnswer === answers[qId]) {
+                score++;
+            }
+        }
+
+        const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+
+        res.status(200).json({ 
+            message: 'ፈተናው ተጠናቋል',
+            score: percentage,
+            correctCount: score,
+            totalQuestions: total
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});      
 
 router.get('/contents', async (req, res) => {
     try {
@@ -371,10 +441,8 @@ router.post('/contents', async (req, res) => {
 });
 
 // ==========================================
-// ADMIN STATS & MANAGEMENT ROUTES (የተስተካከለ - አንድ የተዋሃደ ራውተር)
+// ADMIN STATS & MANAGEMENT ROUTES
 // ==========================================
-
-// 1. በአድሚን ስታቲስቲክስ ውስጥ የ HR ሰራተኞችን ጭምር ማሳየት
 router.get('/admin/stats', async (req, res) => {
     try {
         const totalStudents = await Student.countDocuments();
@@ -388,7 +456,6 @@ router.get('/admin/stats', async (req, res) => {
     }
 });
 
-// 2. አድሚኑ ማንኛውንም ተጠቃሚ (student, teacher, hr, admin) መመዝገብ እንዲችል
 router.post('/admin/users', async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
@@ -407,6 +474,15 @@ router.post('/admin/users', async (req, res) => {
         res.status(201).json({ message: 'ተጠቃሚው (ሰራተኛው/ተማሪው) በተሳካ ሁኔታ ተመዝግቧል!' });
     } catch (err) {
         res.status(400).json({ error: err.message });
+    }
+});
+
+router.get('/admin/exams', async (req, res) => {
+    try {
+        const exams = await Exam.find().sort({ createdAt: -1 });
+        res.status(200).json(exams);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -429,8 +505,40 @@ router.post('/admin/exams', async (req, res) => {
     }
 });
 
+router.put('/admin/exams/:id', async (req, res) => {
+    try {
+        const { title, subject, examDate, resultReleaseDate, duration } = req.body;
+        
+        const updatedExam = await Exam.findByIdAndUpdate(
+            req.params.id,
+            { title, subject, examDate, resultReleaseDate, duration },
+            { new: true }
+        );
+
+        if (!updatedExam) {
+            return res.status(404).json({ error: 'ፈተናው አልተገኘም!' });
+        }
+
+        res.status(200).json({ message: 'ፈተናው በተሳካ ሁኔታ ተስተካክሏል!', updatedExam });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.delete('/admin/exams/:id', async (req, res) => {
+    try {
+        const deletedExam = await Exam.findByIdAndDelete(req.params.id);
+        if (!deletedExam) {
+            return res.status(404).json({ error: 'ፈተናው አልተገኘም!' });
+        }
+        res.status(200).json({ message: 'ፈተናው በተሳካ ሁኔታ ተሰርዟል!' });
+    } catch (err)  {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ==========================================
-// LOGIN ROUTE
+// AUTH & ADMIN SETUP ROUTES
 // ==========================================
 router.post('/login', async (req, res) => {
     try {
@@ -504,133 +612,6 @@ router.put('/admin/change-password', async (req, res) => {
 
         res.status(200).json({ message: 'የአድሚኑ የይለፍ ቃል በተሳካ ሁኔታ ተቀይሯል!' });
     } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.get('/exams/:id', async (req, res) => {
-    try {
-        const exam = await Exam.findById(req.params.id);
-        if (!exam) return res.status(404).json({ error: 'ፈተናው አልተገኘም' });
-
-        const questions = await QuestionBank.find({ subject: exam.subject }).limit(20); 
-        
-        res.json({ exam, questions });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.post('/exams/:id/submit', async (req, res) => {
-    try {
-        const { answers } = req.body; 
-        let score = 0;
-        let total = Object.keys(answers).length;
-
-        for (let qId in answers) {
-            const question = await QuestionBank.findById(qId);
-            if (question && question.correctAnswer === answers[qId]) {
-                score++;
-            }
-        }
-
-        const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
-
-        res.status(200).json({ 
-            message: 'ፈተናው ተጠናቋል',
-            score: percentage,
-            correctCount: score,
-            totalQuestions: total
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});      
-
-// ==========================================
-// QUESTION BANK DELETE ROUTES
-// ==========================================
-
-router.delete('/admin/question-bank/all', async (req, res) => {
-  try {
-    await QuestionBank.deleteMany({});
-    res.status(200).json({ message: 'ሁሉም ጥያቄዎች በተሳካ ሁኔታ ተሰርዘዋል!' });
-  } catch (err) {
-    res.status(500).json({ error: 'ሁሉንም ጥያቄዎች በመሰረዝ ላይ ስህተት ተፈጥሯል' });
-  }
-});
-
-router.delete('/admin/question-bank/subject/:subject', async (req, res) => {
-  try {
-    const subjectName = decodeURIComponent(req.params.subject);
-    
-    const result = await QuestionBank.deleteMany({ 
-      subject: { $regex: new RegExp(`^${subjectName}$`, 'i') } 
-    });
-
-    res.status(200).json({ 
-      message: `የ "${subjectName}" ትምህርት ጥያቄዎች በሙሉ ተሰርዘዋል!`,
-      deletedCount: result.deletedCount 
-    });
-  } catch (err) {
-    console.error('Error deleting questions by subject:', err);
-    res.status(500).json({ error: 'ጥያቄዎችን በመሰረዝ ላይ ስህተት ተፈጥሯል' });
-  }
-});
-
-router.delete('/admin/question-bank/:id', async (req, res) => {
-  try {
-    const deletedQuestion = await QuestionBank.findByIdAndDelete(req.params.id);
-    if (!deletedQuestion) {
-      return res.status(404).json({ error: 'ጥያቄው አልተገኘም!' });
-    }
-    res.status(200).json({ message: 'ጥያቄው በተሳካ ሁኔታ ተሰርዟል!' });
-  } catch (err) {
-    res.status(500).json({ error: 'ጥያቄውን በመሰረዝ ላይ ስህተት ተፈጥሯል' });
-  }
-});
-
-// ==========================================
-// EXAM MANAGEMENT ROUTES
-// ==========================================
-
-router.get('/admin/exams', async (req, res) => {
-    try {
-        const exams = await Exam.find().sort({ createdAt: -1 });
-        res.status(200).json(exams);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.put('/admin/exams/:id', async (req, res) => {
-    try {
-        const { title, subject, examDate, resultReleaseDate, duration } = req.body;
-        
-        const updatedExam = await Exam.findByIdAndUpdate(
-            req.params.id,
-            { title, subject, examDate, resultReleaseDate, duration },
-            { new: true }
-        );
-
-        if (!updatedExam) {
-            return res.status(404).json({ error: 'ፈተናው አልተገኘም!' });
-        }
-
-        res.status(200).json({ message: 'ፈተናው በተሳካ ሁኔታ ተስተካክሏል!', updatedExam });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.delete('/admin/exams/:id', async (req, res) => {
-    try {
-        const deletedExam = await Exam.findByIdAndDelete(req.params.id);
-        if (!deletedExam) {
-            return res.status(404).json({ error: 'ፈተናው አልተገኘም!' });
-        }
-        res.status(200).json({ message: 'ፈተናው በተሳካ ሁኔታ ተሰርዟል!' });
-    } catch (err)  {
         res.status(500).json({ error: err.message });
     }
 });
