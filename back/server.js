@@ -1,84 +1,98 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path');
 require('dotenv').config();
 
 const app = express();
 
 // ==========================================
-// CONFIG
+// CONFIGURATION
 // ==========================================
 
 const PORT = process.env.PORT || 10000;
-
 const MONGO_URI = process.env.MONGO_URI;
 
-const CLIENT_URL =
-    process.env.CLIENT_URL ||
-    'http://localhost:3000';
+const allowedOrigins = [
+    'https://olin-exam-center.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:3001'
+];
 
 // ==========================================
-// SECURITY / MIDDLEWARE
+// CORS
 // ==========================================
 
-app.disable('x-powered-by');
+app.use(cors({
+    origin: function (origin, callback) {
 
-app.use(
-    cors({
-        origin: function (origin, callback) {
-            // Allow requests without origin
-            // such as Postman/server-to-server
-            if (!origin) {
-                return callback(null, true);
-            }
+        // Allow requests without an origin
+        // such as Postman/server-to-server requests
+        if (!origin) {
+            return callback(null, true);
+        }
 
-            const allowedOrigins = [
-                CLIENT_URL,
-                'http://localhost:3000'
-            ];
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
 
-            if (allowedOrigins.includes(origin)) {
-                return callback(null, true);
-            }
+        console.log('Blocked CORS origin:', origin);
 
-            return callback(
-                new Error('CORS policy: Origin not allowed')
-            );
-        },
-        credentials: true
-    })
-);
+        return callback(
+            new Error('Not allowed by CORS')
+        );
+    },
 
-app.use(
-    express.json({
-        limit: '2mb'
-    })
-);
+    methods: [
+        'GET',
+        'POST',
+        'PUT',
+        'DELETE',
+        'PATCH',
+        'OPTIONS'
+    ],
 
-app.use(
-    express.urlencoded({
-        extended: true,
-        limit: '2mb'
-    })
-);
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization'
+    ],
+
+    credentials: true,
+
+    optionsSuccessStatus: 204
+}));
+
+// Explicitly handle preflight requests
+app.options('*', cors());
+
+// ==========================================
+// BODY PARSERS
+// ==========================================
+
+app.use(express.json({
+    limit: '10mb'
+}));
+
+app.use(express.urlencoded({
+    extended: true,
+    limit: '10mb'
+}));
 
 // ==========================================
 // HEALTH CHECK
 // ==========================================
 
 app.get('/', (req, res) => {
-    res.json({
+    res.status(200).json({
         success: true,
-        message: 'Max Technology Olin Exam Center API',
-        status: 'running',
-        timestamp: new Date().toISOString()
+        message: 'Max Technology Olin Exam Center API is running.',
+        status: 'online'
     });
 });
 
 app.get('/api/health', (req, res) => {
-    res.json({
+    res.status(200).json({
         success: true,
+        message: 'API is healthy',
         database:
             mongoose.connection.readyState === 1
                 ? 'connected'
@@ -87,40 +101,29 @@ app.get('/api/health', (req, res) => {
 });
 
 // ==========================================
-// STATIC UPLOADS
-// ==========================================
-
-app.use(
-    '/uploads',
-    express.static(path.join(__dirname, 'uploads'))
-);
-
-// ==========================================
 // DATABASE
 // ==========================================
 
 if (!MONGO_URI) {
-    console.error(
-        'ERROR: MONGO_URI is missing from environment variables.'
-    );
-} else {
-    mongoose
-        .connect(MONGO_URI)
-        .then(() => {
-            console.log(
-                'MongoDB Atlas Successfully Connected!'
-            );
-        })
-        .catch((error) => {
-            console.error(
-                'MongoDB Connection Error:',
-                error.message
-            );
-        });
+    console.error('❌ MONGO_URI is missing.');
+    process.exit(1);
 }
 
+mongoose.connect(MONGO_URI)
+    .then(() => {
+        console.log('✅ MongoDB Atlas Successfully Connected!');
+    })
+    .catch((err) => {
+        console.error(
+            '❌ Database Connection Error:',
+            err.message
+        );
+
+        process.exit(1);
+    });
+
 // ==========================================
-// ROUTES
+// API ROUTES
 // ==========================================
 
 const mainRoutes = require('./routes');
@@ -133,6 +136,7 @@ app.use('/api', mainRoutes);
 
 app.use((req, res) => {
     res.status(404).json({
+        success: false,
         error: 'API endpoint not found.'
     });
 });
@@ -142,16 +146,19 @@ app.use((req, res) => {
 // ==========================================
 
 app.use((err, req, res, next) => {
-    console.error('Global server error:', err);
 
-    if (err.message?.includes('CORS')) {
+    console.error('Server Error:', err);
+
+    if (err.message === 'Not allowed by CORS') {
         return res.status(403).json({
-            error: 'CORS request rejected.'
+            success: false,
+            error: 'CORS origin not allowed.'
         });
     }
 
-    res.status(500).json({
-        error: 'Internal server error.'
+    res.status(err.status || 500).json({
+        success: false,
+        error: err.message || 'Internal server error.'
     });
 });
 
@@ -161,6 +168,6 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
     console.log(
-        `Max Technology Server is running on port ${PORT}`
+        `🚀 Max Technology Server is running on port ${PORT}`
     );
 });
