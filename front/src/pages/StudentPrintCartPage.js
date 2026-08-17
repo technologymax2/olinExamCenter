@@ -1,7 +1,15 @@
 import React, { useState } from "react";
 
-const API_BASE_URL = "https://max-tech-backend.onrender.com";
-const FRONTEND_URL = "https://max-technology-website.vercel.app";
+  const API_URL =
+    process.env.REACT_APP_API_URL ||
+    'https://olinexamcenter.onrender.com';
+
+  // ==========================================
+  // ☁️ IMGBB CONFIGURATION
+  // ==========================================
+  const IMGBB_API_KEY =
+    process.env.REACT_APP_IMGBB_API_KEY ||
+    'ebd592608f4dba1e8271bec8e920c408';
 
 // ======================================================
 // STUDENT PRINT CART PAGE
