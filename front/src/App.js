@@ -52,6 +52,10 @@ export const logoutUser = () => {
 
 // ==========================================
 // PROTECTED ROUTE
+// Supports:
+// allowedRole="hr"
+// OR
+// allowedRole={['hr', 'admin']}
 // ==========================================
 
 function ProtectedRoute({
@@ -62,6 +66,10 @@ function ProtectedRoute({
 
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('userRole');
+
+    // ------------------------------------------
+    // NO TOKEN
+    // ------------------------------------------
 
     if (!token) {
         return (
@@ -75,16 +83,24 @@ function ProtectedRoute({
         );
     }
 
-    if (
-        allowedRole &&
-        role !== allowedRole
-    ) {
-        return (
-            <Navigate
-                to={getDashboardPath(role)}
-                replace
-            />
-        );
+    // ------------------------------------------
+    // ROLE CHECK
+    // ------------------------------------------
+
+    if (allowedRole) {
+
+        const allowedRoles = Array.isArray(allowedRole)
+            ? allowedRole
+            : [allowedRole];
+
+        if (!allowedRoles.includes(role)) {
+            return (
+                <Navigate
+                    to={getDashboardPath(role)}
+                    replace
+                />
+            );
+        }
     }
 
     return children;
@@ -95,7 +111,9 @@ function ProtectedRoute({
 // ==========================================
 
 function getDashboardPath(role) {
+
     switch (role) {
+
         case 'admin':
             return '/admin';
 
@@ -118,6 +136,7 @@ function getDashboardPath(role) {
 // ==========================================
 
 function Home() {
+
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('userRole');
 
@@ -140,6 +159,7 @@ function Home() {
                     <div className="grid md:grid-cols-2">
 
                         {/* BRAND */}
+
                         <div className="bg-[#123758] text-white p-8 sm:p-12 flex flex-col justify-center">
 
                             <div className="w-16 h-16 rounded-2xl bg-[#d4af37] flex items-center justify-center text-[#123758] font-black text-2xl mb-6">
@@ -164,6 +184,7 @@ function Home() {
                         </div>
 
                         {/* LOGIN */}
+
                         <div className="p-8 sm:p-12 flex flex-col justify-center">
 
                             <h2 className="text-2xl font-black text-[#123758]">
@@ -203,6 +224,7 @@ function Home() {
 // ==========================================
 
 function StudentHome() {
+
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
 
@@ -250,24 +272,34 @@ function StudentHome() {
 // ==========================================
 
 function App() {
+
     return (
         <Router>
 
             <Routes>
 
-                {/* HOME */}
+                {/* ======================================
+                    HOME
+                ====================================== */}
+
                 <Route
                     path="/"
                     element={<Home />}
                 />
 
-                {/* LOGIN */}
+                {/* ======================================
+                    LOGIN
+                ====================================== */}
+
                 <Route
                     path="/login"
                     element={<Login />}
                 />
 
-                {/* ADMIN */}
+                {/* ======================================
+                    ADMIN
+                ====================================== */}
+
                 <Route
                     path="/admin"
                     element={
@@ -277,7 +309,10 @@ function App() {
                     }
                 />
 
-                {/* TEACHER */}
+                {/* ======================================
+                    TEACHER
+                ====================================== */}
+
                 <Route
                     path="/teacher"
                     element={
@@ -287,7 +322,10 @@ function App() {
                     }
                 />
 
-                {/* HR */}
+                {/* ======================================
+                    HR DASHBOARD
+                ====================================== */}
+
                 <Route
                     path="/hr"
                     element={
@@ -297,7 +335,35 @@ function App() {
                     }
                 />
 
-                {/* STUDENT HOME */}
+                {/* ======================================
+                    HR + ADMIN PRINT PAGE
+                ======================================
+
+                    IMPORTANT:
+
+                    HR can now access:
+
+                    /hr/print
+
+                    Admin can also access it.
+
+                ====================================== */}
+
+                <Route
+                    path="/hr/print"
+                    element={
+                        <ProtectedRoute
+                            allowedRole={['hr', 'admin']}
+                        >
+                            <StudentPrintCartPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* ======================================
+                    STUDENT HOME
+                ====================================== */}
+
                 <Route
                     path="/student"
                     element={
@@ -307,7 +373,10 @@ function App() {
                     }
                 />
 
-                {/* EXAM */}
+                {/* ======================================
+                    STUDENT EXAM
+                ====================================== */}
+
                 <Route
                     path="/student/exam/:examId"
                     element={
@@ -317,7 +386,10 @@ function App() {
                     }
                 />
 
-                {/* PRINT */}
+                {/* ======================================
+                    STUDENT PRINT
+                ====================================== */}
+
                 <Route
                     path="/student/print"
                     element={
@@ -327,7 +399,10 @@ function App() {
                     }
                 />
 
-                {/* FALLBACK */}
+                {/* ======================================
+                    FALLBACK
+                ====================================== */}
+
                 <Route
                     path="*"
                     element={
