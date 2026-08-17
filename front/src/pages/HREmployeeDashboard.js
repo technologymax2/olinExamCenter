@@ -17,7 +17,7 @@ function HREmployeeDashboard() {
   const IMGBB_API_KEY = "ebd592608f4dba1e8271bec8e920c408";
   const API_URL = process.env.REACT_APP_API_URL || 'https://olinexamcenter.onrender.com';
 
-  // የተማሪ መረጃዎችን የያዘው ስቴት
+  // የተማሪ መረጃዎችን የያዘው 
   const initialFormState = {
     nameAmh: '',
     nameEng: '',
