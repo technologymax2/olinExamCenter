@@ -1,91 +1,83 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 function HREmployeeDashboard() {
-  // ==========================================
+  // =========================================================
   // BASIC STATES
-  // ==========================================
+  // =========================================================
+
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+
   const [studentStatus, setStudentStatus] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
   const [studentList, setStudentList] = useState([]);
-  const [editingStudentId, setEditingStudentId] = useState(null);
-  const [selectedIdCard, setSelectedIdCard] = useState(null);
 
-  // ==========================================
+  const [editingStudentId, setEditingStudentId] =
+    useState(null);
+
+  const [selectedIdCard, setSelectedIdCard] =
+    useState(null);
+
+  // =========================================================
   // BULK SELECTION
-  // ==========================================
-  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  // =========================================================
+
+  const [selectedStudentIds, setSelectedStudentIds] =
+    useState([]);
+
   const [targetAcademicYear, setTargetAcademicYear] =
     useState('2ኛ ዓመት');
 
-  // ==========================================
+  // =========================================================
+  // STUDENT PRINT CART
+  // =========================================================
+
+  const [printCart, setPrintCart] = useState(() => {
+    try {
+      const savedCart =
+        localStorage.getItem('studentPrintCart');
+
+      if (savedCart) {
+        const parsed = JSON.parse(savedCart);
+
+        return Array.isArray(parsed)
+          ? parsed
+          : [];
+      }
+    } catch (error) {
+      console.error(
+        'Load print cart error:',
+        error
+      );
+    }
+
+    return [];
+  });
+
+  const [showPrintCart, setShowPrintCart] =
+    useState(false);
+
+  // =========================================================
   // API CONFIGURATION
-  // ==========================================
+  // =========================================================
+
   const API_URL =
     process.env.REACT_APP_API_URL ||
     'https://olinexamcenter.onrender.com';
 
-  // ==========================================
-  // IMGBB CONFIGURATION
-  // ==========================================
+  // =========================================================
+  // IMGBB
+  // =========================================================
+
   const IMGBB_API_KEY =
     process.env.REACT_APP_IMGBB_API_KEY ||
     'ebd592608f4dba1e8271bec8e920c408';
 
-  // ==========================================
-  // AUTHENTICATION
-  // ==========================================
-
-  /*
-    IMPORTANT:
-    Your login stores the JWT as:
-
-    localStorage.setItem('token', ...)
-
-    Every protected HR API request must send:
-
-    Authorization: Bearer <token>
-  */
-
-  const getToken = () => {
-    return localStorage.getItem('token');
-  };
-
-  const getAuthHeaders = () => {
-    const token = getToken();
-
-    return {
-      'Content-Type': 'application/json',
-      ...(token
-        ? {
-            Authorization: `Bearer ${token}`
-          }
-        : {})
-    };
-  };
-
-  // ==========================================
-  // CHECK AUTHENTICATION
-  // ==========================================
-  const checkAuthentication = () => {
-    const token = getToken();
-
-    if (!token) {
-      setErrorMessage(
-        'የመግቢያ ፍቃድዎ የለም። እባክዎ እንደገና Login ያድርጉ።'
-      );
-
-      return false;
-    }
-
-    return true;
-  };
-
-  // ==========================================
+  // =========================================================
   // INITIAL FORM
-  // ==========================================
+  // =========================================================
+
   const initialFormState = {
     nameAmh: '',
     nameEng: '',
@@ -118,9 +110,83 @@ function HREmployeeDashboard() {
   const [studentForm, setStudentForm] =
     useState(initialFormState);
 
-  // ==========================================
+  // =========================================================
+  // AUTHENTICATION
+  // =========================================================
+
+  const getToken = () => {
+    return localStorage.getItem('token');
+  };
+
+  const getAuthHeaders = () => {
+    const token = getToken();
+
+    return {
+      'Content-Type': 'application/json',
+      ...(token
+        ? {
+            Authorization: `Bearer ${token}`
+          }
+        : {})
+    };
+  };
+
+  const checkAuthentication = () => {
+    const token = getToken();
+
+    if (!token) {
+      setErrorMessage(
+        'የመግቢያ ፍቃድዎ የለም። እባክዎ እንደገና Login ያድርጉ።'
+      );
+
+      return false;
+    }
+
+    return true;
+  };
+
+  // =========================================================
+  // SAVE PRINT CART TO LOCAL STORAGE
+  // =========================================================
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        'studentPrintCart',
+        JSON.stringify(printCart)
+      );
+    } catch (error) {
+      console.error(
+        'Save print cart error:',
+        error
+      );
+    }
+  }, [printCart]);
+
+  // =========================================================
+  // KEEP PRINT CART IN SYNC WITH REGISTERED STUDENTS
+  // =========================================================
+
+  useEffect(() => {
+    if (!studentList.length) {
+      return;
+    }
+
+    setPrintCart((currentCart) => {
+      const validStudentIds = new Set(
+        studentList.map((student) => student._id)
+      );
+
+      return currentCart.filter((student) =>
+        validStudentIds.has(student._id)
+      );
+    });
+  }, [studentList]);
+
+  // =========================================================
   // FORM CHANGE
-  // ==========================================
+  // =========================================================
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -133,9 +199,10 @@ function HREmployeeDashboard() {
     setStudentStatus('');
   };
 
-  // ==========================================
+  // =========================================================
   // FETCH STUDENTS
-  // ==========================================
+  // =========================================================
+
   const fetchStudents = useCallback(async () => {
     try {
       setErrorMessage('');
@@ -160,9 +227,6 @@ function HREmployeeDashboard() {
 
       const data = await response.json();
 
-      // ------------------------------------------
-      // AUTH ERROR
-      // ------------------------------------------
       if (response.status === 401) {
         localStorage.removeItem('token');
 
@@ -171,9 +235,6 @@ function HREmployeeDashboard() {
         );
       }
 
-      // ------------------------------------------
-      // FORBIDDEN
-      // ------------------------------------------
       if (response.status === 403) {
         throw new Error(
           'ይህን የHR መረጃ ለማየት ፍቃድ የለዎትም።'
@@ -210,16 +271,18 @@ function HREmployeeDashboard() {
     }
   }, [API_URL]);
 
-  // ==========================================
+  // =========================================================
   // LOAD STUDENTS
-  // ==========================================
+  // =========================================================
+
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
 
-  // ==========================================
+  // =========================================================
   // IMAGE UPLOAD
-  // ==========================================
+  // =========================================================
+
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
 
@@ -244,6 +307,7 @@ function HREmployeeDashboard() {
     setStudentStatus('');
 
     const formData = new FormData();
+
     formData.append('image', file);
 
     try {
@@ -289,33 +353,173 @@ function HREmployeeDashboard() {
     }
   };
 
-  // ==========================================
+  // =========================================================
   // SELECT ALL
-  // ==========================================
+  // =========================================================
+
   const handleSelectAll = (e) => {
     if (e.target.checked) {
       setSelectedStudentIds(
-        studentList.map((student) => student._id)
+        studentList.map(
+          (student) => student._id
+        )
       );
     } else {
       setSelectedStudentIds([]);
     }
   };
 
-  // ==========================================
+  // =========================================================
   // SELECT ONE
-  // ==========================================
+  // =========================================================
+
   const handleCheckboxChange = (id) => {
     setSelectedStudentIds((prev) =>
       prev.includes(id)
-        ? prev.filter((item) => item !== id)
+        ? prev.filter(
+            (item) => item !== id
+          )
         : [...prev, id]
     );
   };
 
-  // ==========================================
+  // =========================================================
+  // ADD ONE STUDENT TO PRINT CART
+  // =========================================================
+
+  const addStudentToPrintCart = (student) => {
+    setPrintCart((prev) => {
+      const alreadyExists = prev.some(
+        (item) => item._id === student._id
+      );
+
+      if (alreadyExists) {
+        return prev;
+      }
+
+      return [...prev, student];
+    });
+
+    setStudentStatus(
+      `${student.nameEng || student.nameAmh} ወደ Print Cart ተጨምሯል!`
+    );
+  };
+
+  // =========================================================
+  // REMOVE ONE STUDENT FROM PRINT CART
+  // =========================================================
+
+  const removeStudentFromPrintCart = (studentId) => {
+    setPrintCart((prev) =>
+      prev.filter(
+        (student) => student._id !== studentId
+      )
+    );
+  };
+
+  // =========================================================
+  // CHECK IF STUDENT IS IN PRINT CART
+  // =========================================================
+
+  const isStudentInPrintCart = (studentId) => {
+    return printCart.some(
+      (student) => student._id === studentId
+    );
+  };
+
+  // =========================================================
+  // ADD SELECTED STUDENTS TO PRINT CART
+  // =========================================================
+
+  const addSelectedStudentsToPrintCart = () => {
+    if (selectedStudentIds.length === 0) {
+      setErrorMessage(
+        'እባክዎ በመጀመሪያ ተማሪዎችን ይምረጡ!'
+      );
+      return;
+    }
+
+    const selectedStudents =
+      studentList.filter((student) =>
+        selectedStudentIds.includes(
+          student._id
+        )
+      );
+
+    setPrintCart((prev) => {
+      const existingIds = new Set(
+        prev.map((student) => student._id)
+      );
+
+      const newStudents =
+        selectedStudents.filter(
+          (student) =>
+            !existingIds.has(student._id)
+        );
+
+      return [...prev, ...newStudents];
+    });
+
+    setStudentStatus(
+      `${selectedStudents.length} ተማሪ(ዎች) ወደ Print Cart ተጨምረዋል!`
+    );
+
+    setSelectedStudentIds([]);
+  };
+
+  // =========================================================
+  // ADD ALL STUDENTS TO PRINT CART
+  // =========================================================
+
+  const addAllStudentsToPrintCart = () => {
+    if (studentList.length === 0) {
+      setErrorMessage(
+        'የተመዘገበ ተማሪ የለም!'
+      );
+      return;
+    }
+
+    setPrintCart((prev) => {
+      const existingIds = new Set(
+        prev.map((student) => student._id)
+      );
+
+      const newStudents =
+        studentList.filter(
+          (student) =>
+            !existingIds.has(student._id)
+        );
+
+      return [...prev, ...newStudents];
+    });
+
+    setStudentStatus(
+      'ሁሉም የተመዘገቡ ተማሪዎች ወደ Print Cart ተጨምረዋል!'
+    );
+  };
+
+  // =========================================================
+  // CLEAR PRINT CART
+  // =========================================================
+
+  const clearPrintCart = () => {
+    const confirmed = window.confirm(
+      'ሁሉንም ተማሪዎች ከ Print Cart ማስወገድ ይፈልጋሉ?'
+    );
+
+    if (!confirmed) return;
+
+    setPrintCart([]);
+
+    setStudentStatus(
+      'Print Cart ተጠርጓል!'
+    );
+  };
+
+  // =========================================================
   // BULK UPDATE ACADEMIC YEAR
-  // ==========================================
+  // =========================================================
+
   const handleBulkUpdateAcademicYear =
     async () => {
       if (selectedStudentIds.length === 0) {
@@ -335,45 +539,56 @@ function HREmployeeDashboard() {
         setStudentStatus('');
 
         await Promise.all(
-          selectedStudentIds.map(async (id) => {
-            const response = await fetch(
-              `${API_URL}/api/hr/students/${id}`,
-              {
-                method: 'PUT',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({
-                  academicYear:
-                    targetAcademicYear
-                })
+          selectedStudentIds.map(
+            async (id) => {
+              const response =
+                await fetch(
+                  `${API_URL}/api/hr/students/${id}`,
+                  {
+                    method: 'PUT',
+                    headers:
+                      getAuthHeaders(),
+                    body: JSON.stringify({
+                      academicYear:
+                        targetAcademicYear
+                    })
+                  }
+                );
+
+              const data =
+                await response.json();
+
+              if (
+                response.status === 401
+              ) {
+                localStorage.removeItem(
+                  'token'
+                );
+
+                throw new Error(
+                  'የመግቢያ ፍቃድዎ ጊዜው አልፏል።'
+                );
               }
-            );
 
-            const data = await response.json();
+              if (
+                response.status === 403
+              ) {
+                throw new Error(
+                  'ይህን ተግባር ለመፈጸም ፍቃድ የለዎትም።'
+                );
+              }
 
-            if (response.status === 401) {
-              localStorage.removeItem('token');
+              if (!response.ok) {
+                throw new Error(
+                  data.error ||
+                    data.message ||
+                    'የተማሪውን መረጃ ማዘመን አልተቻለም!'
+                );
+              }
 
-              throw new Error(
-                'የመግቢያ ፍቃድዎ ጊዜው አልፏል።'
-              );
+              return data;
             }
-
-            if (response.status === 403) {
-              throw new Error(
-                'ይህን ተግባር ለመፈጸም ፍቃድ የለዎትም።'
-              );
-            }
-
-            if (!response.ok) {
-              throw new Error(
-                data.error ||
-                  data.message ||
-                  'የተማሪውን መረጃ ማዘመን አልተቻለም!'
-              );
-            }
-
-            return data;
-          })
+          )
         );
 
         setStudentStatus(
@@ -398,9 +613,10 @@ function HREmployeeDashboard() {
       }
     };
 
-  // ==========================================
+  // =========================================================
   // EDIT STUDENT
-  // ==========================================
+  // =========================================================
+
   const handleEditClick = (student) => {
     setEditingStudentId(student._id);
 
@@ -423,9 +639,10 @@ function HREmployeeDashboard() {
     });
   };
 
-  // ==========================================
+  // =========================================================
   // CANCEL EDIT
-  // ==========================================
+  // =========================================================
+
   const handleCancelEdit = () => {
     setEditingStudentId(null);
     setStudentForm(initialFormState);
@@ -433,9 +650,10 @@ function HREmployeeDashboard() {
     setStudentStatus('');
   };
 
-  // ==========================================
+  // =========================================================
   // DELETE STUDENT
-  // ==========================================
+  // =========================================================
+
   const handleDeleteStudent = async (id) => {
     const confirmed = window.confirm(
       'ይህን ተማሪ በእርግጥ መሰረዝ ይፈልጋሉ?'
@@ -486,12 +704,22 @@ function HREmployeeDashboard() {
 
       setStudentList((prev) =>
         prev.filter(
-          (student) => student._id !== id
+          (student) =>
+            student._id !== id
         )
       );
 
       setSelectedStudentIds((prev) =>
-        prev.filter((item) => item !== id)
+        prev.filter(
+          (item) => item !== id
+        )
+      );
+
+      setPrintCart((prev) =>
+        prev.filter(
+          (student) =>
+            student._id !== id
+        )
       );
 
       if (editingStudentId === id) {
@@ -525,9 +753,10 @@ function HREmployeeDashboard() {
     }
   };
 
-  // ==========================================
+  // =========================================================
   // CREATE / UPDATE STUDENT
-  // ==========================================
+  // =========================================================
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -538,7 +767,8 @@ function HREmployeeDashboard() {
       return;
     }
 
-    const phoneRegex = /^(09|07)\d{8}$/;
+    const phoneRegex =
+      /^(09|07)\d{8}$/;
 
     if (
       studentForm.phoneNumber &&
@@ -565,54 +795,83 @@ function HREmployeeDashboard() {
     }
 
     const studentData = {
-      nameAmh: studentForm.nameAmh.trim(),
-      nameEng: studentForm.nameEng.trim(),
+      nameAmh:
+        studentForm.nameAmh.trim(),
+
+      nameEng:
+        studentForm.nameEng.trim(),
+
       fatherNameAmh:
         studentForm.fatherNameAmh.trim(),
+
       grandfatherNameAmh:
         studentForm.grandfatherNameAmh.trim(),
+
       motherNameAmh:
         studentForm.motherNameAmh.trim(),
-      gender: studentForm.gender,
-      birthDate: studentForm.birthDate,
+
+      gender:
+        studentForm.gender,
+
+      birthDate:
+        studentForm.birthDate,
+
       age:
         studentForm.age === ''
           ? ''
           : Number(studentForm.age),
+
       studentIdNumber:
         studentForm.studentIdNumber.trim(),
+
       programLevel:
         studentForm.programLevel,
+
       department:
         studentForm.department.trim(),
+
       academicYear:
         studentForm.academicYear,
+
       semester:
         studentForm.semester,
+
       gradeAmh:
         studentForm.gradeAmh || '',
+
       gradeEng:
         studentForm.gradeEng || '',
+
       dateOfIssue:
         studentForm.dateOfIssue,
+
       expireDate:
         studentForm.expireDate,
+
       addressAmh:
         studentForm.addressAmh || '',
+
       addressEng:
         studentForm.addressEng || '',
+
       city:
         studentForm.city.trim(),
+
       woreda:
         studentForm.woreda.trim(),
+
       nationality:
         studentForm.nationality.trim(),
+
       phoneNumber:
         studentForm.phoneNumber.trim(),
+
       guardianName:
         studentForm.guardianName.trim(),
+
       guardianPhone:
         studentForm.guardianPhone.trim(),
+
       imageUrl:
         studentForm.imageUrl || ''
     };
@@ -622,39 +881,33 @@ function HREmployeeDashboard() {
 
       let response;
 
-      // ------------------------------------------
-      // UPDATE
-      // ------------------------------------------
       if (editingStudentId) {
         response = await fetch(
           `${API_URL}/api/hr/students/${editingStudentId}`,
           {
             method: 'PUT',
             headers: getAuthHeaders(),
-            body: JSON.stringify(studentData)
+            body: JSON.stringify(
+              studentData
+            )
           }
         );
-      }
-
-      // ------------------------------------------
-      // CREATE
-      // ------------------------------------------
-      else {
+      } else {
         response = await fetch(
           `${API_URL}/api/hr/students`,
           {
             method: 'POST',
             headers: getAuthHeaders(),
-            body: JSON.stringify(studentData)
+            body: JSON.stringify(
+              studentData
+            )
           }
         );
       }
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
-      // ------------------------------------------
-      // AUTH ERROR
-      // ------------------------------------------
       if (response.status === 401) {
         localStorage.removeItem('token');
 
@@ -663,9 +916,6 @@ function HREmployeeDashboard() {
         );
       }
 
-      // ------------------------------------------
-      // FORBIDDEN
-      // ------------------------------------------
       if (response.status === 403) {
         throw new Error(
           'ይህን ተግባር ለመፈጸም የHR ፍቃድ ያስፈልጋል።'
@@ -706,69 +956,264 @@ function HREmployeeDashboard() {
     }
   };
 
-  // ==========================================
+  // =========================================================
   // REFRESH
-  // ==========================================
-  const handleRefreshStudents = async () => {
-    setStudentStatus('');
-    setErrorMessage('');
+  // =========================================================
 
-    try {
-      setLoading(true);
+  const handleRefreshStudents =
+    async () => {
+      setStudentStatus('');
+      setErrorMessage('');
 
-      await fetchStudents();
+      try {
+        setLoading(true);
 
-      setStudentStatus(
-        'የተማሪዎች ዝርዝር በድጋሚ ተጭኗል!'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+        await fetchStudents();
 
-  // ==========================================
-  // PRINT ID CARD
-  // ==========================================
-  const handlePrintIdCard = () => {
-    if (!selectedIdCard) {
+        setStudentStatus(
+          'የተማሪዎች ዝርዝር በድጋሚ ተጭኗል!'
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  // =========================================================
+  // PRINT SINGLE CARD
+  // =========================================================
+
+  const handlePrintSingleStudent =
+    (student) => {
+      printStudentCards([student]);
+    };
+
+  // =========================================================
+  // PRINT CART
+  // =========================================================
+
+  const handlePrintCart = () => {
+    if (printCart.length === 0) {
       setErrorMessage(
-        'እባክዎ መጀመሪያ የተማሪ መታወቂያ ይምረጡ!'
+        'Print Cart ውስጥ ምንም ተማሪ የለም!'
       );
+
       return;
     }
 
-    const student = selectedIdCard;
+    printStudentCards(printCart);
+  };
 
-    const qrData =
-      `${API_URL}/verify/${student._id}`;
+  // =========================================================
+  // PRINT STUDENT CARDS
+  // =========================================================
 
-    const qrUrl =
-      `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-        qrData
-      )}`;
+  const printStudentCards = (
+    students
+  ) => {
+    if (
+      !students ||
+      students.length === 0
+    ) {
+      setErrorMessage(
+        'ለማተም ተማሪ አልተገኘም!'
+      );
+
+      return;
+    }
 
     const printWindow = window.open(
       '',
       '_blank',
-      'width=1200,height=900'
+      'width=1400,height=1000'
     );
 
     if (!printWindow) {
       alert(
-        'Print page መክፈት አልተቻለም። እባክዎ browser popup ይፍቀዱ።'
+        'Print page መክፈት አልተቻለም። Browser popup ይፍቀዱ።'
       );
+
       return;
     }
 
+    const cardsHTML = students
+      .map((student) => {
+        const qrData =
+          `${API_URL}/verify/${student._id}`;
+
+        const qrUrl =
+          `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+            qrData
+          )}`;
+
+        return `
+          <div class="student-print-page">
+
+            <div class="print-card-wrapper">
+
+              <!-- FRONT -->
+              <div class="card">
+
+                <div class="card-header">
+
+                  <div class="college">
+                    COLLEGE / UNIVERSITY
+                  </div>
+
+                  <div class="subtitle">
+                    STUDENT ID CARD
+                  </div>
+
+                </div>
+
+                <div class="student-main">
+
+                  <div class="photo-container">
+
+                    <img
+                      src="${
+                        student.imageUrl ||
+                        'https://via.placeholder.com/100'
+                      }"
+                      alt="Student"
+                    />
+
+                  </div>
+
+                  <div class="amh-name">
+                    ${student.nameAmh || ''}
+                    ${student.fatherNameAmh || ''}
+                  </div>
+
+                  <div class="eng-name">
+                    ${student.nameEng || ''}
+                  </div>
+
+                  <div class="program">
+                    ${student.programLevel || ''}
+                    -
+                    ${student.department || ''}
+                  </div>
+
+                </div>
+
+                <div class="info-box">
+
+                  <div class="info-row">
+                    <span>መታወቂያ:</span>
+                    <strong>
+                      ${student.studentIdNumber || '-'}
+                    </strong>
+                  </div>
+
+                  <div class="info-row">
+                    <span>ዓመት:</span>
+                    <strong>
+                      ${student.academicYear || '-'}
+                    </strong>
+                  </div>
+
+                  <div class="info-row">
+                    <span>ሴሚስተር:</span>
+                    <strong>
+                      ${student.semester || '-'}
+                    </strong>
+                  </div>
+
+                </div>
+
+              </div>
+
+              <!-- BACK -->
+              <div class="card">
+
+                <div class="back-title">
+                  አደጋ ጊዜ እና አድራሻ
+                </div>
+
+                <div class="back-info">
+
+                  <div>
+                    ሴሚስተር:
+                    <strong>
+                      ${student.semester || '-'}
+                    </strong>
+                  </div>
+
+                  <div>
+                    ወላጅ:
+                    <strong>
+                      ${student.guardianName || '-'}
+                    </strong>
+                  </div>
+
+                  <div>
+                    ስልክ:
+                    <strong>
+                      ${student.guardianPhone || '-'}
+                    </strong>
+                  </div>
+
+                  <div>
+                    አድራሻ:
+                    ${
+                      student.addressAmh ||
+                      student.addressEng ||
+                      `${student.city || ''}, ወረዳ ${
+                        student.woreda || ''
+                      }`
+                    }
+                  </div>
+
+                  <div>
+                    የሚያበቃበት:
+                    <strong>
+                      ${student.expireDate || '-'}
+                    </strong>
+                  </div>
+
+                </div>
+
+                <div class="qr-box">
+
+                  <img
+                    src="${qrUrl}"
+                    alt="QR Code"
+                  />
+
+                  <div class="qr-text">
+                    SCAN TO VERIFY
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            <div class="student-print-number">
+              Student ${
+                students.indexOf(student) + 1
+              }
+              /
+              ${students.length}
+            </div>
+
+          </div>
+        `;
+      })
+      .join('');
+
     printWindow.document.write(`
       <!DOCTYPE html>
+
       <html lang="en">
+
       <head>
 
         <meta charset="UTF-8" />
 
         <title>
-          Student ID - ${student.studentIdNumber || ''}
+          Student ID Cards
         </title>
 
         <style>
@@ -782,39 +1227,35 @@ function HREmployeeDashboard() {
             margin: 0;
             padding: 0;
             background: white;
-            font-family: Arial, Helvetica, sans-serif;
+            font-family:
+              Arial,
+              Helvetica,
+              sans-serif;
           }
 
           body {
+            width: 100%;
+          }
+
+          .student-print-page {
+            width: 100%;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
+            page-break-after: always;
           }
 
-          .print-header {
-            width: 100%;
-            padding: 20px;
-            text-align: center;
+          .student-print-page:last-child {
+            page-break-after: auto;
           }
 
-          .print-header h1 {
-            margin: 0;
-            font-size: 20px;
-          }
-
-          .print-header p {
-            margin: 5px 0 0;
-            color: #555;
-            font-size: 13px;
-          }
-
-          .cards {
+          .print-card-wrapper {
             display: flex;
-            gap: 30px;
+            gap: 25px;
             align-items: center;
             justify-content: center;
-            padding: 20px;
           }
 
           .card {
@@ -829,7 +1270,6 @@ function HREmployeeDashboard() {
             position: relative;
             display: flex;
             flex-direction: column;
-            box-shadow: none;
           }
 
           .card-header {
@@ -955,10 +1395,10 @@ function HREmployeeDashboard() {
             margin-top: 4px;
           }
 
-          .print-note {
+          .student-print-number {
             margin-top: 20px;
-            font-size: 12px;
             color: #555;
+            font-size: 11px;
           }
 
           @media print {
@@ -968,31 +1408,17 @@ function HREmployeeDashboard() {
               margin: 10mm;
             }
 
-            body {
-              background: white;
-            }
-
-            .print-header {
-              padding: 5px;
-            }
-
-            .print-header h1 {
-              font-size: 16px;
-            }
-
-            .print-note {
-              display: none;
-            }
-
-            .cards {
-              gap: 15mm;
-              padding: 5mm;
+            .student-print-page {
+              min-height: 270mm;
             }
 
             .card {
-              box-shadow: none;
               print-color-adjust: exact;
               -webkit-print-color-adjust: exact;
+            }
+
+            .student-print-number {
+              display: none;
             }
 
           }
@@ -1003,163 +1429,7 @@ function HREmployeeDashboard() {
 
       <body>
 
-        <div class="print-header">
-
-          <h1>
-            STUDENT IDENTIFICATION CARD
-          </h1>
-
-          <p>
-            ${student.nameEng || ''}
-            -
-            ${student.studentIdNumber || ''}
-          </p>
-
-        </div>
-
-        <div class="cards">
-
-          <div class="card">
-
-            <div class="card-header">
-
-              <div class="college">
-                COLLEGE / UNIVERSITY
-              </div>
-
-              <div class="subtitle">
-                STUDENT ID CARD
-              </div>
-
-            </div>
-
-            <div class="student-main">
-
-              <div class="photo-container">
-
-                <img
-                  src="${
-                    student.imageUrl ||
-                    'https://via.placeholder.com/100'
-                  }"
-                  alt="Student"
-                />
-
-              </div>
-
-              <div class="amh-name">
-                ${student.nameAmh || ''}
-                ${student.fatherNameAmh || ''}
-              </div>
-
-              <div class="eng-name">
-                ${student.nameEng || ''}
-              </div>
-
-              <div class="program">
-                ${student.programLevel || ''}
-                -
-                ${student.department || ''}
-              </div>
-
-            </div>
-
-            <div class="info-box">
-
-              <div class="info-row">
-                <span>መታወቂያ:</span>
-                <strong>
-                  ${student.studentIdNumber || '-'}
-                </strong>
-              </div>
-
-              <div class="info-row">
-                <span>ዓመት:</span>
-                <strong>
-                  ${student.academicYear || '-'}
-                </strong>
-              </div>
-
-              <div class="info-row">
-                <span>ሴሚስተር:</span>
-                <strong>
-                  ${student.semester || '-'}
-                </strong>
-              </div>
-
-            </div>
-
-          </div>
-
-          <div class="card">
-
-            <div class="back-title">
-              አደጋ ጊዜ እና አድራሻ
-            </div>
-
-            <div class="back-info">
-
-              <div>
-                ሴሚስተር:
-                <strong>
-                  ${student.semester || '-'}
-                </strong>
-              </div>
-
-              <div>
-                ወላጅ:
-                <strong>
-                  ${student.guardianName || '-'}
-                </strong>
-              </div>
-
-              <div>
-                ስልክ:
-                <strong>
-                  ${student.guardianPhone || '-'}
-                </strong>
-              </div>
-
-              <div>
-                አድራሻ:
-                ${
-                  student.addressAmh ||
-                  student.addressEng ||
-                  `${student.city || ''}, ወረዳ ${
-                    student.woreda || ''
-                  }`
-                }
-              </div>
-
-              <div>
-                የሚያበቃበት:
-                <strong>
-                  ${student.expireDate || '-'}
-                </strong>
-              </div>
-
-            </div>
-
-            <div class="qr-box">
-
-              <img
-                src="${qrUrl}"
-                alt="QR Code"
-              />
-
-              <div class="qr-text">
-                SCAN TO VERIFY
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-        <div class="print-note">
-          Use your browser print dialog to print the student ID card.
-        </div>
+        ${cardsHTML}
 
         <script>
 
@@ -1169,7 +1439,7 @@ function HREmployeeDashboard() {
 
               window.print();
 
-            }, 1000);
+            }, 1200);
 
           };
 
@@ -1186,6 +1456,7 @@ function HREmployeeDashboard() {
         </script>
 
       </body>
+
       </html>
     `);
 
@@ -1193,18 +1464,31 @@ function HREmployeeDashboard() {
     printWindow.focus();
   };
 
-  // ==========================================
+  // =========================================================
+  // OPEN ID CARD PREVIEW
+  // =========================================================
+
+  const handleOpenIdCard = (student) => {
+    setSelectedIdCard(student);
+  };
+
+  // =========================================================
   // RENDER
-  // ==========================================
+  // =========================================================
+
   return (
     <div className="min-h-screen bg-gray-950 text-white p-4 md:p-8">
 
       <div className="max-w-7xl mx-auto">
 
-        {/* HEADER */}
+        {/* =====================================================
+            HEADER
+        ====================================================== */}
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
 
           <div>
+
             <h1 className="text-2xl md:text-3xl font-extrabold text-blue-400">
               👔 የኮሌጅ ሬጅስትራር / HR
             </h1>
@@ -1212,23 +1496,49 @@ function HREmployeeDashboard() {
             <p className="text-gray-400 text-sm mt-1">
               የተማሪዎች ምዝገባ እና መታወቂያ ማዕከል
             </p>
+
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
 
             <button
               type="button"
-              onClick={handleRefreshStudents}
+              onClick={
+                handleRefreshStudents
+              }
               disabled={loading}
               className="px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl text-sm font-semibold transition disabled:opacity-50"
             >
               🔄 አድስ
             </button>
 
+            {/* PRINT CART BUTTON */}
+
+            <button
+              type="button"
+              onClick={() =>
+                setShowPrintCart(true)
+              }
+              className="relative px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition"
+            >
+              🛒 Student Print Cart
+
+              {printCart.length > 0 && (
+                <span className="absolute -top-2 -right-2 min-w-[24px] h-6 px-1 bg-red-600 rounded-full flex items-center justify-center text-xs font-bold">
+                  {printCart.length}
+                </span>
+              )}
+
+            </button>
+
             {selectedIdCard && (
               <button
                 type="button"
-                onClick={handlePrintIdCard}
+                onClick={() =>
+                  handlePrintSingleStudent(
+                    selectedIdCard
+                  )
+                }
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition"
               >
                 🖨 Print ID
@@ -1239,7 +1549,10 @@ function HREmployeeDashboard() {
 
         </div>
 
-        {/* MESSAGES */}
+        {/* =====================================================
+            MESSAGES
+        ====================================================== */}
+
         {errorMessage && (
           <div className="mb-4 p-4 bg-red-600/25 border border-red-500 text-red-400 rounded-xl text-sm font-medium">
             ⚠️ {errorMessage}
@@ -1252,16 +1565,24 @@ function HREmployeeDashboard() {
           </div>
         )}
 
-        {/* MAIN GRID */}
+        {/* =====================================================
+            MAIN GRID
+        ====================================================== */}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* STUDENT FORM */}
+          {/* ===================================================
+              STUDENT FORM
+          ==================================================== */}
+
           <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-gray-800">
 
             <h3 className="text-xl font-bold mb-4 text-[#d4af37]">
+
               {editingStudentId
                 ? '✏️ የተማሪ መረጃ ማስተካከያ'
                 : '➕ አዲስ ተማሪ መዝግብ'}
+
             </h3>
 
             <form
@@ -1273,7 +1594,9 @@ function HREmployeeDashboard() {
                 type="text"
                 name="nameAmh"
                 placeholder="የተማሪ ስም (አማርኛ)"
-                value={studentForm.nameAmh}
+                value={
+                  studentForm.nameAmh
+                }
                 onChange={handleChange}
                 required
                 className="w-full p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
@@ -1283,7 +1606,9 @@ function HREmployeeDashboard() {
                 type="text"
                 name="nameEng"
                 placeholder="Student Full Name (English)"
-                value={studentForm.nameEng}
+                value={
+                  studentForm.nameEng
+                }
                 onChange={handleChange}
                 required
                 className="w-full p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
@@ -1295,7 +1620,9 @@ function HREmployeeDashboard() {
                   type="text"
                   name="fatherNameAmh"
                   placeholder="የአባት ስም"
-                  value={studentForm.fatherNameAmh}
+                  value={
+                    studentForm.fatherNameAmh
+                  }
                   onChange={handleChange}
                   required
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
@@ -1305,7 +1632,9 @@ function HREmployeeDashboard() {
                   type="text"
                   name="grandfatherNameAmh"
                   placeholder="የአያት ስም"
-                  value={studentForm.grandfatherNameAmh}
+                  value={
+                    studentForm.grandfatherNameAmh
+                  }
                   onChange={handleChange}
                   required
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
@@ -1315,7 +1644,9 @@ function HREmployeeDashboard() {
                   type="text"
                   name="motherNameAmh"
                   placeholder="የእናት ስም"
-                  value={studentForm.motherNameAmh}
+                  value={
+                    studentForm.motherNameAmh
+                  }
                   onChange={handleChange}
                   required
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
@@ -1327,10 +1658,13 @@ function HREmployeeDashboard() {
 
                 <select
                   name="programLevel"
-                  value={studentForm.programLevel}
+                  value={
+                    studentForm.programLevel
+                  }
                   onChange={handleChange}
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
                 >
+
                   <option value="Level">
                     Level (ቴክኒክና ሙያ)
                   </option>
@@ -1346,13 +1680,16 @@ function HREmployeeDashboard() {
                   <option value="PhD">
                     PhD (ዶክትሬት)
                   </option>
+
                 </select>
 
                 <input
                   type="text"
                   name="department"
                   placeholder="ዲፓርትመንት / መስክ"
-                  value={studentForm.department}
+                  value={
+                    studentForm.department
+                  }
                   onChange={handleChange}
                   required
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
@@ -1364,26 +1701,48 @@ function HREmployeeDashboard() {
 
                 <select
                   name="academicYear"
-                  value={studentForm.academicYear}
+                  value={
+                    studentForm.academicYear
+                  }
                   onChange={handleChange}
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
                 >
-                  <option value="1ኛ ዓመት">1ኛ ዓመት</option>
-                  <option value="2ኛ ዓመት">2ኛ ዓመት</option>
-                  <option value="3ኛ ዓመት">3ኛ ዓመት</option>
-                  <option value="4ኛ ዓመት">4ኛ ዓመት</option>
-                  <option value="5ኛ ዓመት">5ኛ ዓመት</option>
+
+                  <option value="1ኛ ዓመት">
+                    1ኛ ዓመት
+                  </option>
+
+                  <option value="2ኛ ዓመት">
+                    2ኛ ዓመት
+                  </option>
+
+                  <option value="3ኛ ዓመት">
+                    3ኛ ዓመት
+                  </option>
+
+                  <option value="4ኛ ዓመት">
+                    4ኛ ዓመት
+                  </option>
+
+                  <option value="5ኛ ዓመት">
+                    5ኛ ዓመት
+                  </option>
+
                   <option value="ምርምር/Thesis">
                     ምርምር / Thesis
                   </option>
+
                 </select>
 
                 <select
                   name="semester"
-                  value={studentForm.semester}
+                  value={
+                    studentForm.semester
+                  }
                   onChange={handleChange}
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
                 >
+
                   <option value="1ኛ ሴሚስተር">
                     1ኛ ሴሚስተር
                   </option>
@@ -1395,6 +1754,7 @@ function HREmployeeDashboard() {
                   <option value="የክረምት ፕሮግራም">
                     የክረምት ፕሮግራም
                   </option>
+
                 </select>
 
               </div>
@@ -1403,19 +1763,30 @@ function HREmployeeDashboard() {
 
                 <select
                   name="gender"
-                  value={studentForm.gender}
+                  value={
+                    studentForm.gender
+                  }
                   onChange={handleChange}
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
                 >
-                  <option value="ወንድ">ወንድ</option>
-                  <option value="ሴት">ሴት</option>
+
+                  <option value="ወንድ">
+                    ወንድ
+                  </option>
+
+                  <option value="ሴት">
+                    ሴት
+                  </option>
+
                 </select>
 
                 <input
                   type="text"
                   name="nationality"
                   placeholder="ዜግነት"
-                  value={studentForm.nationality}
+                  value={
+                    studentForm.nationality
+                  }
                   onChange={handleChange}
                   required
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
@@ -1428,7 +1799,9 @@ function HREmployeeDashboard() {
                 <input
                   type="date"
                   name="birthDate"
-                  value={studentForm.birthDate}
+                  value={
+                    studentForm.birthDate
+                  }
                   onChange={handleChange}
                   required
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
@@ -1438,7 +1811,9 @@ function HREmployeeDashboard() {
                   type="number"
                   name="age"
                   placeholder="እድሜ"
-                  value={studentForm.age}
+                  value={
+                    studentForm.age
+                  }
                   onChange={handleChange}
                   required
                   min="1"
@@ -1454,7 +1829,9 @@ function HREmployeeDashboard() {
                   type="text"
                   name="studentIdNumber"
                   placeholder="መታወቂያ ቁጥር"
-                  value={studentForm.studentIdNumber}
+                  value={
+                    studentForm.studentIdNumber
+                  }
                   onChange={handleChange}
                   required
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
@@ -1465,7 +1842,9 @@ function HREmployeeDashboard() {
                   name="phoneNumber"
                   placeholder="ስልክ ቁጥር"
                   maxLength="10"
-                  value={studentForm.phoneNumber}
+                  value={
+                    studentForm.phoneNumber
+                  }
                   onChange={handleChange}
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
                 />
@@ -1478,7 +1857,9 @@ function HREmployeeDashboard() {
                   type="text"
                   name="guardianName"
                   placeholder="የወላጅ/አሳዳጊ ስም"
-                  value={studentForm.guardianName}
+                  value={
+                    studentForm.guardianName
+                  }
                   onChange={handleChange}
                   required
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
@@ -1489,7 +1870,9 @@ function HREmployeeDashboard() {
                   name="guardianPhone"
                   placeholder="ወላጅ ስልክ"
                   maxLength="10"
-                  value={studentForm.guardianPhone}
+                  value={
+                    studentForm.guardianPhone
+                  }
                   onChange={handleChange}
                   required
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
@@ -1503,7 +1886,9 @@ function HREmployeeDashboard() {
                   type="text"
                   name="city"
                   placeholder="ከተማ"
-                  value={studentForm.city}
+                  value={
+                    studentForm.city
+                  }
                   onChange={handleChange}
                   required
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
@@ -1513,7 +1898,9 @@ function HREmployeeDashboard() {
                   type="text"
                   name="woreda"
                   placeholder="ወረዳ"
-                  value={studentForm.woreda}
+                  value={
+                    studentForm.woreda
+                  }
                   onChange={handleChange}
                   required
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
@@ -1527,7 +1914,9 @@ function HREmployeeDashboard() {
                   type="text"
                   name="addressAmh"
                   placeholder="አድራሻ በአማርኛ"
-                  value={studentForm.addressAmh}
+                  value={
+                    studentForm.addressAmh
+                  }
                   onChange={handleChange}
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
                 />
@@ -1536,7 +1925,9 @@ function HREmployeeDashboard() {
                   type="text"
                   name="addressEng"
                   placeholder="Address in English"
-                  value={studentForm.addressEng}
+                  value={
+                    studentForm.addressEng
+                  }
                   onChange={handleChange}
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
                 />
@@ -1548,7 +1939,9 @@ function HREmployeeDashboard() {
                 <input
                   type="date"
                   name="dateOfIssue"
-                  value={studentForm.dateOfIssue}
+                  value={
+                    studentForm.dateOfIssue
+                  }
                   onChange={handleChange}
                   required
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
@@ -1557,7 +1950,9 @@ function HREmployeeDashboard() {
                 <input
                   type="date"
                   name="expireDate"
-                  value={studentForm.expireDate}
+                  value={
+                    studentForm.expireDate
+                  }
                   onChange={handleChange}
                   required
                   className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
@@ -1576,8 +1971,12 @@ function HREmployeeDashboard() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={handleImageUpload}
-                  disabled={uploadingImage}
+                  onChange={
+                    handleImageUpload
+                  }
+                  disabled={
+                    uploadingImage
+                  }
                   className="w-full p-2 bg-gray-900 border border-gray-700 rounded-xl text-white text-xs"
                 />
 
@@ -1592,7 +1991,9 @@ function HREmployeeDashboard() {
                     <div className="mt-2 flex items-center gap-3">
 
                       <img
-                        src={studentForm.imageUrl}
+                        src={
+                          studentForm.imageUrl
+                        }
                         alt="Student"
                         className="w-12 h-12 rounded-full object-cover border border-blue-400"
                       />
@@ -1618,17 +2019,21 @@ function HREmployeeDashboard() {
                   }
                   className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl disabled:opacity-50"
                 >
+
                   {loading
                     ? 'እየተቀመጠ ነው...'
                     : editingStudentId
                     ? 'ለውጦችን አስቀምጥ'
                     : 'ተማሪውን መዝግብ'}
+
                 </button>
 
                 {editingStudentId && (
                   <button
                     type="button"
-                    onClick={handleCancelEdit}
+                    onClick={
+                      handleCancelEdit
+                    }
                     className="py-3 px-4 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl"
                   >
                     ሰርዝ
@@ -1638,27 +2043,66 @@ function HREmployeeDashboard() {
               </div>
 
             </form>
+
           </div>
 
-          {/* STUDENT LIST */}
+          {/* ===================================================
+              STUDENT LIST
+          ==================================================== */}
 
           <div className="lg:col-span-2 bg-gray-900 p-6 rounded-2xl shadow-lg border border-gray-800 overflow-x-auto">
 
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+            {/* LIST HEADER */}
 
-              <h3 className="text-xl font-bold text-blue-400">
-                📋 የተመዘገቡ ተማሪዎች
-              </h3>
+            <div className="flex flex-col gap-4 mb-4">
+
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+
+                <div>
+
+                  <h3 className="text-xl font-bold text-blue-400">
+                    📋 የተመዘገቡ ተማሪዎች
+                  </h3>
+
+                  <p className="text-xs text-gray-500 mt-1">
+                    Total: {studentList.length}
+                  </p>
+
+                </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    addAllStudentsToPrintCart
+                  }
+                  disabled={
+                    studentList.length === 0
+                  }
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold disabled:opacity-50"
+                >
+                  🛒 ሁሉንም ወደ Print Cart
+                </button>
+
+              </div>
+
+              {/* BULK CONTROLS */}
 
               {studentList.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 bg-gray-800 p-2 rounded-xl border border-gray-700">
+                <div className="flex flex-wrap items-center gap-2 bg-gray-800 p-3 rounded-xl border border-gray-700">
 
                   <span className="text-xs text-gray-300">
-                    የተመረጡትን ወደ፦
+                    የተመረጡት:
+                    <strong className="text-blue-400 ml-1">
+                      {
+                        selectedStudentIds.length
+                      }
+                    </strong>
                   </span>
 
                   <select
-                    value={targetAcademicYear}
+                    value={
+                      targetAcademicYear
+                    }
                     onChange={(e) =>
                       setTargetAcademicYear(
                         e.target.value
@@ -1666,6 +2110,7 @@ function HREmployeeDashboard() {
                     }
                     className="p-1.5 bg-gray-900 border border-gray-600 rounded-lg text-white text-xs"
                   >
+
                     <option value="1ኛ ዓመት">
                       1ኛ ዓመት
                     </option>
@@ -1689,6 +2134,7 @@ function HREmployeeDashboard() {
                     <option value="ምርምር/Thesis">
                       ምርምር / Thesis
                     </option>
+
                   </select>
 
                   <button
@@ -1701,10 +2147,30 @@ function HREmployeeDashboard() {
                       selectedStudentIds.length ===
                         0
                     }
-                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
                   >
                     አዘምን (
-                    {selectedStudentIds.length}
+                    {
+                      selectedStudentIds.length
+                    }
+                    )
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={
+                      addSelectedStudentsToPrintCart
+                    }
+                    disabled={
+                      selectedStudentIds.length ===
+                      0
+                    }
+                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
+                  >
+                    🛒 ወደ Print Cart (
+                    {
+                      selectedStudentIds.length
+                    }
                     )
                   </button>
 
@@ -1713,20 +2179,26 @@ function HREmployeeDashboard() {
 
             </div>
 
+            {/* TABLE */}
+
             <div className="overflow-x-auto">
 
-              <table className="w-full text-left border-collapse min-w-[900px]">
+              <table className="w-full text-left border-collapse min-w-[1100px]">
 
                 <thead>
+
                   <tr className="border-b border-gray-800 text-gray-400 text-sm">
 
                     <th className="p-3">
 
                       <input
                         type="checkbox"
-                        onChange={handleSelectAll}
+                        onChange={
+                          handleSelectAll
+                        }
                         checked={
-                          studentList.length > 0 &&
+                          studentList.length >
+                            0 &&
                           selectedStudentIds.length ===
                             studentList.length
                         }
@@ -1752,147 +2224,229 @@ function HREmployeeDashboard() {
                     </th>
 
                     <th className="p-3">
+                      Print
+                    </th>
+
+                    <th className="p-3">
                       እርምጃ
                     </th>
 
                   </tr>
+
                 </thead>
 
                 <tbody className="divide-y divide-gray-800 text-sm">
 
-                  {studentList.map((st) => (
-                    <tr
-                      key={st._id}
-                      className="hover:bg-gray-800/50"
-                    >
+                  {studentList.map(
+                    (st) => (
+                      <tr
+                        key={st._id}
+                        className="hover:bg-gray-800/50"
+                      >
 
-                      <td className="p-3">
+                        {/* CHECKBOX */}
 
-                        <input
-                          type="checkbox"
-                          checked={selectedStudentIds.includes(
-                            st._id
-                          )}
-                          onChange={() =>
-                            handleCheckboxChange(
+                        <td className="p-3">
+
+                          <input
+                            type="checkbox"
+                            checked={selectedStudentIds.includes(
                               st._id
-                            )
-                          }
-                          className="w-4 h-4 cursor-pointer"
-                        />
-
-                      </td>
-
-                      <td className="p-3">
-
-                        <div className="flex items-center gap-3">
-
-                          <img
-                            src={
-                              st.imageUrl ||
-                              'https://via.placeholder.com/40'
+                            )}
+                            onChange={() =>
+                              handleCheckboxChange(
+                                st._id
+                              )
                             }
-                            alt="Student"
-                            className="w-10 h-10 rounded-full object-cover border border-blue-500"
+                            className="w-4 h-4 cursor-pointer"
                           />
 
-                          <div>
+                        </td>
 
-                            <div className="font-semibold">
-                              {st.nameAmh}{' '}
-                              {st.fatherNameAmh}
-                            </div>
+                        {/* STUDENT */}
 
-                            <div className="text-xs text-gray-400">
-                              {st.nameEng}
+                        <td className="p-3">
+
+                          <div className="flex items-center gap-3">
+
+                            <img
+                              src={
+                                st.imageUrl ||
+                                'https://via.placeholder.com/40'
+                              }
+                              alt="Student"
+                              className="w-10 h-10 rounded-full object-cover border border-blue-500"
+                            />
+
+                            <div>
+
+                              <div className="font-semibold">
+                                {
+                                  st.nameAmh
+                                }{' '}
+                                {
+                                  st.fatherNameAmh
+                                }
+                              </div>
+
+                              <div className="text-xs text-gray-400">
+                                {
+                                  st.nameEng
+                                }
+                              </div>
+
                             </div>
 
                           </div>
 
-                        </div>
+                        </td>
 
-                      </td>
+                        {/* PROGRAM */}
 
-                      <td className="p-3">
+                        <td className="p-3">
 
-                        <div className="font-bold text-blue-400">
-                          {st.programLevel}
-                        </div>
-
-                        <div className="text-xs text-gray-400">
-                          {st.department}
-                        </div>
-
-                        <div className="text-xs text-gray-500">
-                          {st.academicYear}
-                        </div>
-
-                      </td>
-
-                      <td className="p-3 font-mono text-xs text-blue-300">
-                        {st.studentIdNumber}
-                      </td>
-
-                      <td className="p-3 text-gray-300">
-                        {st.phoneNumber ||
-                          st.guardianPhone ||
-                          '-'}
-                      </td>
-
-                      <td className="p-3">
-
-                        <div className="flex gap-2 flex-wrap">
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setSelectedIdCard(st)
+                          <div className="font-bold text-blue-400">
+                            {
+                              st.programLevel
                             }
-                            className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg"
-                          >
-                            🪪 መታወቂያ
-                          </button>
+                          </div>
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleEditClick(st)
+                          <div className="text-xs text-gray-400">
+                            {
+                              st.department
                             }
-                            className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold rounded-lg"
-                          >
-                            ✏️ አስተካክል
-                          </button>
+                          </div>
+
+                          <div className="text-xs text-gray-500">
+                            {
+                              st.academicYear
+                            }
+                          </div>
+
+                        </td>
+
+                        {/* ID */}
+
+                        <td className="p-3 font-mono text-xs text-blue-300">
+                          {
+                            st.studentIdNumber
+                          }
+                        </td>
+
+                        {/* PHONE */}
+
+                        <td className="p-3 text-gray-300">
+                          {
+                            st.phoneNumber ||
+                            st.guardianPhone ||
+                            '-'
+                          }
+                        </td>
+
+                        {/* PRINT */}
+
+                        <td className="p-3">
 
                           <button
                             type="button"
-                            onClick={() =>
-                              handleDeleteStudent(
+                            onClick={() => {
+                              if (
+                                isStudentInPrintCart(
+                                  st._id
+                                )
+                              ) {
+                                removeStudentFromPrintCart(
+                                  st._id
+                                );
+                              } else {
+                                addStudentToPrintCart(
+                                  st
+                                );
+                              }
+                            }}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${
+                              isStudentInPrintCart(
                                 st._id
                               )
-                            }
-                            disabled={loading}
-                            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
+                                ? 'bg-red-600 hover:bg-red-700'
+                                : 'bg-purple-600 hover:bg-purple-700'
+                            } text-white`}
                           >
-                            🗑 አጥፋ
+
+                            {isStudentInPrintCart(
+                              st._id
+                            )
+                              ? '✕ Remove'
+                              : '🛒 Add'}
+
                           </button>
 
-                        </div>
+                        </td>
 
-                      </td>
+                        {/* ACTIONS */}
 
-                    </tr>
-                  ))}
+                        <td className="p-3">
 
-                  {studentList.length === 0 && (
+                          <div className="flex gap-2 flex-wrap">
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleOpenIdCard(
+                                  st
+                                )
+                              }
+                              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg"
+                            >
+                              🪪 ID
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleEditClick(
+                                  st
+                                )
+                              }
+                              className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold rounded-lg"
+                            >
+                              ✏️ Edit
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleDeleteStudent(
+                                  st._id
+                                )
+                              }
+                              disabled={loading}
+                              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
+                            >
+                              🗑 Delete
+                            </button>
+
+                          </div>
+
+                        </td>
+
+                      </tr>
+                    )
+                  )}
+
+                  {studentList.length ===
+                    0 && (
                     <tr>
 
                       <td
-                        colSpan="6"
+                        colSpan="7"
                         className="p-10 text-center text-gray-500"
                       >
+
                         {loading
                           ? '⏳ ተማሪዎች እየተጫኑ ነው...'
                           : 'ምንም የተመዘገበ ተማሪ የለም።'}
+
                       </td>
 
                     </tr>
@@ -1909,10 +2463,235 @@ function HREmployeeDashboard() {
         </div>
       </div>
 
-      {/* ID CARD PREVIEW */}
+      {/* =====================================================
+          STUDENT PRINT CART
+      ====================================================== */}
+
+      {showPrintCart && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] overflow-y-auto p-4">
+
+          <div className="max-w-5xl mx-auto bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl overflow-hidden">
+
+            {/* CART HEADER */}
+
+            <div className="p-5 border-b border-gray-800 flex flex-col sm:flex-row justify-between gap-4">
+
+              <div>
+
+                <h2 className="text-2xl font-extrabold text-purple-400">
+                  🛒 Student Print Cart
+                </h2>
+
+                <p className="text-sm text-gray-400 mt-1">
+                  {printCart.length} ተማሪዎች ለመታወቂያ ህትመት ተመርጠዋል
+                </p>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowPrintCart(false)
+                }
+                className="self-start bg-red-600 hover:bg-red-700 text-white w-9 h-9 rounded-full font-bold"
+              >
+                ✕
+              </button>
+
+            </div>
+
+            {/* CART CONTENT */}
+
+            <div className="p-5">
+
+              {printCart.length ===
+                0 ? (
+                <div className="py-20 text-center">
+
+                  <div className="text-6xl mb-4">
+                    🛒
+                  </div>
+
+                  <h3 className="text-xl font-bold text-gray-300">
+                    Print Cart ባዶ ነው
+                  </h3>
+
+                  <p className="text-gray-500 text-sm mt-2">
+                    ከRegistered Students ውስጥ ተማሪዎችን Add ያድርጉ።
+                  </p>
+
+                </div>
+              ) : (
+                <>
+
+                  {/* CART ACTIONS */}
+
+                  <div className="flex flex-wrap gap-3 mb-5">
+
+                    <button
+                      type="button"
+                      onClick={
+                        handlePrintCart
+                      }
+                      className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold"
+                    >
+                      🖨 Print All (
+                      {
+                        printCart.length
+                      }
+                      )
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={
+                        clearPrintCart
+                      }
+                      className="px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold"
+                    >
+                      🗑 Clear Cart
+                    </button>
+
+                  </div>
+
+                  {/* CART STUDENTS */}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                    {printCart.map(
+                      (student) => (
+                        <div
+                          key={
+                            student._id
+                          }
+                          className="bg-gray-950 border border-gray-800 rounded-2xl p-4"
+                        >
+
+                          <div className="flex items-center gap-3">
+
+                            <img
+                              src={
+                                student.imageUrl ||
+                                'https://via.placeholder.com/80'
+                              }
+                              alt="Student"
+                              className="w-16 h-16 rounded-full object-cover border-2 border-purple-500"
+                            />
+
+                            <div className="min-w-0">
+
+                              <h4 className="font-bold truncate">
+                                {
+                                  student.nameAmh
+                                }{' '}
+                                {
+                                  student.fatherNameAmh
+                                }
+                              </h4>
+
+                              <p className="text-xs text-gray-400 truncate">
+                                {
+                                  student.nameEng
+                                }
+                              </p>
+
+                              <p className="text-xs text-blue-400 font-mono mt-1">
+                                {
+                                  student.studentIdNumber
+                                }
+                              </p>
+
+                            </div>
+
+                          </div>
+
+                          <div className="mt-3 text-xs text-gray-400">
+
+                            <div>
+                              {
+                                student.programLevel
+                              }{' '}
+                              -
+                              {' '}
+                              {
+                                student.department
+                              }
+                            </div>
+
+                            <div>
+                              {
+                                student.academicYear
+                              }
+                            </div>
+
+                          </div>
+
+                          <div className="flex gap-2 mt-4">
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleOpenIdCard(
+                                  student
+                                )
+                              }
+                              className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg"
+                            >
+                              👁 Preview
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeStudentFromPrintCart(
+                                  student._id
+                                )
+                              }
+                              className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg"
+                            >
+                              ✕ Remove
+                            </button>
+
+                          </div>
+
+                        </div>
+                      )
+                    )}
+
+                  </div>
+
+                </>
+              )}
+
+            </div>
+
+            {/* CART FOOTER */}
+
+            <div className="p-5 border-t border-gray-800 flex justify-end">
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowPrintCart(false)
+                }
+                className="px-5 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-xl font-semibold"
+              >
+                ዝጋ
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* =====================================================
+          ID CARD PREVIEW
+      ====================================================== */}
 
       {selectedIdCard && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[70] overflow-y-auto">
 
           <div className="flex flex-col items-center gap-6 relative">
 
@@ -1960,18 +2739,28 @@ function HREmployeeDashboard() {
                   </div>
 
                   <h3 className="text-[11px] font-bold mt-1 text-center">
-                    {selectedIdCard.nameAmh}{' '}
-                    {selectedIdCard.fatherNameAmh}
+                    {
+                      selectedIdCard.nameAmh
+                    }{' '}
+                    {
+                      selectedIdCard.fatherNameAmh
+                    }
                   </h3>
 
                   <h3 className="text-[10px] font-semibold text-gray-300">
-                    {selectedIdCard.nameEng}
+                    {
+                      selectedIdCard.nameEng
+                    }
                   </h3>
 
                   <p className="text-[9px] text-[#d4af37] font-semibold mt-0.5 text-center">
-                    {selectedIdCard.programLevel}
+                    {
+                      selectedIdCard.programLevel
+                    }
                     {' - '}
-                    {selectedIdCard.department}
+                    {
+                      selectedIdCard.department
+                    }
                   </p>
 
                 </div>
@@ -1979,18 +2768,39 @@ function HREmployeeDashboard() {
                 <div className="text-[9px] text-gray-200 bg-black/25 p-2 rounded-lg border border-[#d4af37]/20">
 
                   <div className="flex justify-between">
-                    <span>መታወቂያ:</span>
+                    <span>
+                      መታወቂያ:
+                    </span>
 
                     <span className="font-mono">
-                      {selectedIdCard.studentIdNumber}
+                      {
+                        selectedIdCard.studentIdNumber
+                      }
+                    </span>
+
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span>
+                      ዓመት:
+                    </span>
+
+                    <span>
+                      {
+                        selectedIdCard.academicYear
+                      }
                     </span>
                   </div>
 
                   <div className="flex justify-between">
-                    <span>ዓመት:</span>
+                    <span>
+                      ሴሚስተር:
+                    </span>
 
                     <span>
-                      {selectedIdCard.academicYear}
+                      {
+                        selectedIdCard.semester
+                      }
                     </span>
                   </div>
 
@@ -2015,34 +2825,44 @@ function HREmployeeDashboard() {
                   <div>
                     ሴሚስተር:{' '}
                     <span className="font-bold">
-                      {selectedIdCard.semester}
+                      {
+                        selectedIdCard.semester
+                      }
                     </span>
                   </div>
 
                   <div>
                     ወላጅ:{' '}
                     <span className="font-bold">
-                      {selectedIdCard.guardianName}
+                      {
+                        selectedIdCard.guardianName
+                      }
                     </span>
                   </div>
 
                   <div>
                     ስልክ:{' '}
                     <span className="font-bold">
-                      {selectedIdCard.guardianPhone}
+                      {
+                        selectedIdCard.guardianPhone
+                      }
                     </span>
                   </div>
 
                   <div>
                     አድራሻ:{' '}
-                    {selectedIdCard.addressAmh ||
+                    {
+                      selectedIdCard.addressAmh ||
                       selectedIdCard.addressEng ||
-                      `${selectedIdCard.city || ''}, ወረዳ ${selectedIdCard.woreda || ''}`}
+                      `${selectedIdCard.city || ''}, ወረዳ ${selectedIdCard.woreda || ''}`
+                    }
                   </div>
 
                   <div>
                     የሚያበቃበት:{' '}
-                    {selectedIdCard.expireDate}
+                    {
+                      selectedIdCard.expireDate
+                    }
                   </div>
 
                 </div>
@@ -2067,13 +2887,35 @@ function HREmployeeDashboard() {
 
             </div>
 
-            <button
-              type="button"
-              onClick={handlePrintIdCard}
-              className="w-full max-w-[560px] py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow text-sm transition"
-            >
-              🖨 መታወቂያውን አትም
-            </button>
+            {/* PREVIEW BUTTONS */}
+
+            <div className="flex gap-3 w-full max-w-[560px]">
+
+              <button
+                type="button"
+                onClick={() =>
+                  addStudentToPrintCart(
+                    selectedIdCard
+                  )
+                }
+                className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow text-sm transition"
+              >
+                🛒 Add to Print Cart
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handlePrintSingleStudent(
+                    selectedIdCard
+                  )
+                }
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow text-sm transition"
+              >
+                🖨 Print
+              </button>
+
+            </div>
 
             <button
               type="button"
