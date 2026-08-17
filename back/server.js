@@ -5,12 +5,12 @@ require('dotenv').config();
 
 const app = express();
 
-// ==========================================
-// CONFIGURATION
-// ==========================================
-
 const PORT = process.env.PORT || 10000;
 const MONGO_URI = process.env.MONGO_URI;
+
+// ==========================================
+// CORS CONFIGURATION
+// ==========================================
 
 const allowedOrigins = [
     'https://olin-exam-center.vercel.app',
@@ -18,15 +18,11 @@ const allowedOrigins = [
     'http://localhost:3001'
 ];
 
-// ==========================================
-// CORS
-// ==========================================
-
 app.use(cors({
     origin: function (origin, callback) {
 
-        // Allow requests without an origin
-        // such as Postman/server-to-server requests
+        // Allow requests without origin
+        // Example: Postman, Render health checks
         if (!origin) {
             return callback(null, true);
         }
@@ -56,22 +52,17 @@ app.use(cors({
         'Authorization'
     ],
 
-    credentials: true,
-
-    optionsSuccessStatus: 204
+    credentials: true
 }));
 
-// Explicitly handle preflight requests
+// Handle preflight requests
 app.options('*', cors());
 
 // ==========================================
-// BODY PARSERS
+// BODY PARSER
 // ==========================================
 
-app.use(express.json({
-    limit: '10mb'
-}));
-
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({
     extended: true,
     limit: '10mb'
@@ -84,46 +75,29 @@ app.use(express.urlencoded({
 app.get('/', (req, res) => {
     res.status(200).json({
         success: true,
-        message: 'Max Technology Olin Exam Center API is running.',
-        status: 'online'
-    });
-});
-
-app.get('/api/health', (req, res) => {
-    res.status(200).json({
-        success: true,
-        message: 'API is healthy',
-        database:
-            mongoose.connection.readyState === 1
-                ? 'connected'
-                : 'disconnected'
+        message: 'Olin Exam Center API is running',
+        database: mongoose.connection.readyState === 1
+            ? 'connected'
+            : 'disconnected'
     });
 });
 
 // ==========================================
-// DATABASE
+// MONGODB CONNECTION
 // ==========================================
-
-if (!MONGO_URI) {
-    console.error('❌ MONGO_URI is missing.');
-    process.exit(1);
-}
 
 mongoose.connect(MONGO_URI)
     .then(() => {
-        console.log('✅ MongoDB Atlas Successfully Connected!');
+        console.log('==========================================');
+        console.log('MongoDB Atlas Successfully Connected!');
+        console.log('==========================================');
     })
     .catch((err) => {
-        console.error(
-            '❌ Database Connection Error:',
-            err.message
-        );
-
-        process.exit(1);
+        console.error('MongoDB Connection Error:', err);
     });
 
 // ==========================================
-// API ROUTES
+// ROUTES
 // ==========================================
 
 const mainRoutes = require('./routes');
@@ -131,13 +105,14 @@ const mainRoutes = require('./routes');
 app.use('/api', mainRoutes);
 
 // ==========================================
-// 404
+// 404 HANDLER
 // ==========================================
 
 app.use((req, res) => {
     res.status(404).json({
         success: false,
-        error: 'API endpoint not found.'
+        error: 'API endpoint not found',
+        path: req.originalUrl
     });
 });
 
@@ -146,19 +121,18 @@ app.use((req, res) => {
 // ==========================================
 
 app.use((err, req, res, next) => {
-
     console.error('Server Error:', err);
 
     if (err.message === 'Not allowed by CORS') {
         return res.status(403).json({
             success: false,
-            error: 'CORS origin not allowed.'
+            error: 'CORS origin not allowed'
         });
     }
 
-    res.status(err.status || 500).json({
+    res.status(500).json({
         success: false,
-        error: err.message || 'Internal server error.'
+        error: 'Internal server error'
     });
 });
 
@@ -167,7 +141,8 @@ app.use((err, req, res, next) => {
 // ==========================================
 
 app.listen(PORT, () => {
-    console.log(
-        `🚀 Max Technology Server is running on port ${PORT}`
-    );
+    console.log('==========================================');
+    console.log(`Olin Exam Center Server running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
+    console.log('==========================================');
 });
