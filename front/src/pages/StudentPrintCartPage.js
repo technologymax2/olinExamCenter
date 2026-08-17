@@ -1,9 +1,4 @@
 import React, { useState } from 'react';
-import Footer from '../components/Footer';
-
-// ==========================================
-// API
-// ==========================================
 
 const API_URL =
   process.env.REACT_APP_API_URL ||
@@ -2024,16 +2019,6 @@ function HRPrintCartPage({ handleLogout }) {
           </div>
 
         )}
-
-      </div>
-
-      {/* =====================================================
-          FOOTER
-      ===================================================== */}
-
-      <div className="screen-only mt-8">
-
-        <Footer />
 
       </div>
 
