@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 function HREmployeeDashboard() {
   const [loading, setLoading] = useState(false);
@@ -48,8 +48,6 @@ function HREmployeeDashboard() {
   };
 
   const [studentForm, setStudentForm] = useState(initialFormState);
-
-  const FRONTEND_URL = window.location.origin;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
