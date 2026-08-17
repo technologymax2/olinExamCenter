@@ -1,199 +1,832 @@
-import React, { useState } from 'react';
+import React, {
+    useCallback,
+    useEffect,
+    useState
+} from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://olinexamcenter.onrender.com';
+const API_URL =
+    process.env.REACT_APP_API_URL ||
+    'https://olinexamcenter.onrender.com';
 
 function TeacherDashboard() {
-  const [openModal, setOpenModal] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [contentForm, setContentForm] = useState({ title: '', description: '', type: 'homework' });
+    const [sidebarOpen, setSidebarOpen] =
+        useState(false);
 
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('token');
-    return { headers: { Authorization: `Bearer ${token}` } };
-  };
+    const [openModal, setOpenModal] =
+        useState(false);
 
-  const handleLogout = () => {
-    localStorage.clear();
-    window.location.href = '/login';
-  };
+    const [loading, setLoading] =
+        useState(true);
 
-  const handleSubmit = () => {
-    axios.post(`${API_URL}/api/contents`, contentForm, getAuthHeader())
-      .then(() => {
-        alert('ተለቋል!');
-        setOpenModal(false);
-        setContentForm({ title: '', description: '', type: 'homework' });
-      })
-      .catch(err => {
-        console.error('Error posting content:', err);
-        if (err.response?.status === 401) {
-          localStorage.clear();
-          window.location.href = '/login';
-        } else {
-          alert('መረጃውን መጫን አልተቻለም። እባክዎ እንደገና ይሞክሩ።');
+    const [submitting, setSubmitting] =
+        useState(false);
+
+    const [error, setError] =
+        useState('');
+
+    const [contents, setContents] =
+        useState([]);
+
+    const [contentForm, setContentForm] =
+        useState({
+            title: '',
+            description: '',
+            type: 'homework'
+        });
+
+    const getAuthHeader = useCallback(() => {
+        const token =
+            localStorage.getItem('token');
+
+        return {
+            headers: {
+                Authorization:
+                    `Bearer ${token}`
+            }
+        };
+    }, []);
+
+    // ==========================================
+    // LOGOUT
+    // ==========================================
+
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('role');
+
+        window.location.href = '/login';
+    };
+
+    // ==========================================
+    // AUTH ERROR
+    // ==========================================
+
+    const handleAuthError = (
+        status
+    ) => {
+        if (
+            status === 401 ||
+            status === 403
+        ) {
+            localStorage.clear();
+            window.location.href =
+                '/login';
+
+            return true;
         }
-      });
-  };
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row text-gray-800 font-sans relative">
-      
-      {/* Mobile Top Bar with Menu Toggle */}
-      <header className="md:hidden bg-[#123758] text-white flex items-center justify-between p-4 shadow-md sticky top-0 z-40">
-        <div className="flex items-center space-x-3">
-          <button onClick={() => setSidebarOpen(true)} className="focus:outline-none">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-          </button>
-          <span className="font-bold text-lg text-[#d4af37]">Max Technology</span>
-        </div>
-        <button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-md font-semibold transition">
-          Logout
-        </button>
-      </header>
+        return false;
+    };
 
-      {/* Sidebar (Displays over the page on mobile, normal sticky on desktop) */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-[#123758] text-white transform transition-transform duration-300 ease-in-out flex flex-col justify-between shadow-2xl
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:sticky md:top-0 md:h-screen
-      `}>
-        <div>
-          <div className="p-6 border-b border-blue-900/50 flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-extrabold text-[#d4af37]">Max Technology</h1>
-              <p className="text-xs text-gray-300 mt-1">Teacher Panel</p>
+    // ==========================================
+    // FETCH CONTENT
+    // ==========================================
+
+    const fetchContents = useCallback(
+        async () => {
+            try {
+                setLoading(true);
+                setError('');
+
+                const response =
+                    await axios.get(
+                        `${API_URL}/api/contents`,
+                        getAuthHeader()
+                    );
+
+                setContents(
+                    response.data || []
+                );
+            } catch (err) {
+                console.error(
+                    'Content loading error:',
+                    err
+                );
+
+                if (
+                    handleAuthError(
+                        err.response?.status
+                    )
+                ) {
+                    return;
+                }
+
+                setError(
+                    err.response?.data?.error ||
+                    'መረጃዎችን መጫን አልተቻለም።'
+                );
+            } finally {
+                setLoading(false);
+            }
+        },
+        [
+            getAuthHeader
+        ]
+    );
+
+    useEffect(() => {
+        fetchContents();
+    }, [fetchContents]);
+
+    // ==========================================
+    // FORM
+    // ==========================================
+
+    const updateForm = (
+        field,
+        value
+    ) => {
+        setContentForm(
+            (previous) => ({
+                ...previous,
+                [field]: value
+            })
+        );
+    };
+
+    const resetForm = () => {
+        setContentForm({
+            title: '',
+            description: '',
+            type: 'homework'
+        });
+    };
+
+    // ==========================================
+    // SUBMIT CONTENT
+    // ==========================================
+
+    const handleSubmit = async (
+        event
+    ) => {
+        event.preventDefault();
+
+        if (
+            !contentForm.title.trim() ||
+            !contentForm.description.trim()
+        ) {
+            alert(
+                'እባክዎ ርዕስ እና መግለጫ ይሙሉ።'
+            );
+
+            return;
+        }
+
+        try {
+            setSubmitting(true);
+
+            await axios.post(
+                `${API_URL}/api/contents`,
+                {
+                    title:
+                        contentForm.title.trim(),
+                    description:
+                        contentForm.description.trim(),
+                    type:
+                        contentForm.type
+                },
+                getAuthHeader()
+            );
+
+            alert(
+                'መረጃው በተሳካ ሁኔታ ተለቋል!'
+            );
+
+            resetForm();
+            setOpenModal(false);
+
+            await fetchContents();
+        } catch (err) {
+            console.error(
+                'Posting content:',
+                err
+            );
+
+            if (
+                handleAuthError(
+                    err.response?.status
+                )
+            ) {
+                return;
+            }
+
+            alert(
+                err.response?.data?.error ||
+                'መረጃውን መላክ አልተቻለም።'
+            );
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // ==========================================
+    // CONTENT TYPE
+    // ==========================================
+
+    const getTypeLabel = (
+        type
+    ) => {
+        switch (type) {
+            case 'homework':
+                return 'የቤት ስራ';
+
+            case 'assignment':
+                return 'አሳይንመንት';
+
+            case 'message':
+                return 'የወላጅ መልዕክት';
+
+            default:
+                return 'አጠቃላይ';
+        }
+    };
+
+    // ==========================================
+    // DATE
+    // ==========================================
+
+    const formatDate = (
+        date
+    ) => {
+        if (!date) return '-';
+
+        return new Date(
+            date
+        ).toLocaleDateString(
+            'en-US',
+            {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            }
+        );
+    };
+
+    // ==========================================
+    // UI
+    // ==========================================
+
+    return (
+        <div className="min-h-screen bg-slate-50 text-slate-800">
+            {/* MOBILE HEADER */}
+            <header className="md:hidden sticky top-0 z-40 bg-[#123758] text-white shadow-lg">
+                <div className="flex items-center justify-between p-4">
+                    <button
+                        onClick={() =>
+                            setSidebarOpen(
+                                true
+                            )
+                        }
+                        className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center"
+                        aria-label="Open menu"
+                    >
+                        ☰
+                    </button>
+
+                    <div className="text-center">
+                        <div className="font-extrabold text-[#d4af37]">
+                            Max Technology
+                        </div>
+
+                        <div className="text-[10px] text-slate-300">
+                            TEACHER PORTAL
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={
+                            handleLogout
+                        }
+                        className="px-3 py-2 rounded-lg bg-red-500 text-white text-xs font-bold"
+                    >
+                        Logout
+                    </button>
+                </div>
+            </header>
+
+            {/* SIDEBAR */}
+            <aside
+                className={`
+                    fixed inset-y-0 left-0 z-50
+                    w-72 bg-[#123758] text-white
+                    flex flex-col
+                    transform transition-transform duration-300
+                    md:translate-x-0
+                    ${
+                        sidebarOpen
+                            ? 'translate-x-0'
+                            : '-translate-x-full'
+                    }
+                    md:sticky md:top-0
+                    md:h-screen
+                `}
+            >
+                {/* BRAND */}
+                <div className="p-6 border-b border-white/10">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="text-xl font-black text-[#d4af37]">
+                                Max Technology
+                            </div>
+
+                            <div className="text-xs text-slate-300 mt-1">
+                                Teacher Management Portal
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() =>
+                                setSidebarOpen(
+                                    false
+                                )
+                            }
+                            className="md:hidden text-xl"
+                        >
+                            ×
+                        </button>
+                    </div>
+                </div>
+
+                {/* NAVIGATION */}
+                <nav className="p-4 space-y-2 flex-1">
+                    <a
+                        href="#dashboard"
+                        onClick={() =>
+                            setSidebarOpen(
+                                false
+                            )
+                        }
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/10 text-[#d4af37] font-bold"
+                    >
+                        <span>⌂</span>
+                        <span>
+                            ዳሽቦርድ
+                        </span>
+                    </a>
+
+                    <a
+                        href="#content"
+                        onClick={() =>
+                            setSidebarOpen(
+                                false
+                            )
+                        }
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/10 hover:text-white transition"
+                    >
+                        <span>▤</span>
+                        <span>
+                            የቤት ስራ / አሳይንመንት
+                        </span>
+                    </a>
+
+                    <a
+                        href="#messages"
+                        onClick={() =>
+                            setSidebarOpen(
+                                false
+                            )
+                        }
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/10 hover:text-white transition"
+                    >
+                        <span>✉</span>
+                        <span>
+                            መልዕክቶች
+                        </span>
+                    </a>
+                </nav>
+
+                {/* SIDEBAR FOOTER */}
+                <div className="p-4 border-t border-white/10">
+                    <button
+                        onClick={
+                            handleLogout
+                        }
+                        className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 py-3 rounded-xl font-bold transition"
+                    >
+                        Logout
+                    </button>
+
+                    <p className="text-center text-xs text-slate-400 mt-4">
+                        © 2026 Max Technology
+                    </p>
+                </div>
+            </aside>
+
+            {/* MOBILE OVERLAY */}
+            {sidebarOpen && (
+                <div
+                    onClick={() =>
+                        setSidebarOpen(
+                            false
+                        )
+                    }
+                    className="fixed inset-0 bg-black/60 z-40 md:hidden"
+                />
+            )}
+
+            {/* PAGE */}
+            <div className="md:ml-0">
+                <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+                    {/* HEADER */}
+                    <section
+                        id="dashboard"
+                        className="mb-8"
+                    >
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div>
+                                <p className="text-sm font-bold text-[#d4af37] uppercase tracking-wider">
+                                    Teacher Portal
+                                </p>
+
+                                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#123758] mt-1">
+                                    እንኳን ደህና መጡ, መምህር!
+                                </h1>
+
+                                <p className="text-slate-500 mt-2 max-w-2xl">
+                                    ለተማሪዎች እና
+                                    ለወላጆች የቤት
+                                    ስራዎችን፣
+                                    አሳይንመንቶችን
+                                    እና መልዕክቶችን
+                                    ያስተዳድሩ።
+                                </p>
+                            </div>
+
+                            <button
+                                onClick={() =>
+                                    setOpenModal(
+                                        true
+                                    )
+                                }
+                                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#123758] hover:bg-[#0d2942] text-white font-bold shadow-lg transition"
+                            >
+                                <span className="text-[#d4af37] text-xl">
+                                    +
+                                </span>
+
+                                አዲስ መረጃ
+                            </button>
+                        </div>
+                    </section>
+
+                    {/* STATS */}
+                    <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                            <p className="text-sm text-slate-500">
+                                Total Posts
+                            </p>
+
+                            <p className="text-3xl font-black text-[#123758] mt-2">
+                                {
+                                    contents.length
+                                }
+                            </p>
+                        </div>
+
+                        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                            <p className="text-sm text-slate-500">
+                                Homework
+                            </p>
+
+                            <p className="text-3xl font-black text-[#123758] mt-2">
+                                {
+                                    contents.filter(
+                                        (item) =>
+                                            item.type ===
+                                            'homework'
+                                    ).length
+                                }
+                            </p>
+                        </div>
+
+                        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                            <p className="text-sm text-slate-500">
+                                Assignments
+                            </p>
+
+                            <p className="text-3xl font-black text-[#123758] mt-2">
+                                {
+                                    contents.filter(
+                                        (item) =>
+                                            item.type ===
+                                            'assignment'
+                                    ).length
+                                }
+                            </p>
+                        </div>
+                    </section>
+
+                    {/* QUICK ACTION */}
+                    <section
+                        id="content"
+                        className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 mb-8"
+                    >
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div>
+                                <h2 className="text-lg font-black text-[#123758]">
+                                    ፈጣን ማስተካከያ
+                                </h2>
+
+                                <p className="text-sm text-slate-500 mt-1">
+                                    ለተማሪዎች አዲስ
+                                    መረጃ ይለቁ።
+                                </p>
+                            </div>
+
+                            <button
+                                onClick={() =>
+                                    setOpenModal(
+                                        true
+                                    )
+                                }
+                                className="px-5 py-3 rounded-xl bg-[#123758] text-white font-bold hover:bg-[#0d2942] transition"
+                            >
+                                + አዲስ ልጥፍ
+                            </button>
+                        </div>
+                    </section>
+
+                    {/* RECENT CONTENT */}
+                    <section
+                        id="messages"
+                        className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+                    >
+                        <div className="p-5 sm:p-6 border-b border-slate-200">
+                            <h2 className="text-lg font-black text-[#123758]">
+                                የቅርብ ጊዜ መረጃዎች
+                            </h2>
+
+                            <p className="text-sm text-slate-500 mt-1">
+                                በቅርብ ጊዜ
+                                የተለቀቁ
+                                መረጃዎች።
+                            </p>
+                        </div>
+
+                        <div className="p-5 sm:p-6">
+                            {loading ? (
+                                <div className="py-12 text-center">
+                                    <div className="mx-auto h-10 w-10 rounded-full border-4 border-slate-200 border-t-[#123758] animate-spin" />
+
+                                    <p className="mt-4 text-sm text-slate-500">
+                                        መረጃዎችን
+                                        በመጫን ላይ...
+                                    </p>
+                                </div>
+                            ) : error ? (
+                                <div className="p-5 rounded-xl bg-red-50 text-red-700 border border-red-100">
+                                    {error}
+                                </div>
+                            ) : contents.length ===
+                              0 ? (
+                                <div className="py-12 text-center">
+                                    <div className="text-4xl">
+                                        📭
+                                    </div>
+
+                                    <h3 className="font-bold text-slate-800 mt-3">
+                                        ምንም መረጃ የለም
+                                    </h3>
+
+                                    <p className="text-sm text-slate-500 mt-1">
+                                        የመጀመሪያውን
+                                        ልጥፍ ይፍጠሩ።
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {contents.map(
+                                        (
+                                            content
+                                        ) => (
+                                            <article
+                                                key={
+                                                    content._id
+                                                }
+                                                className="border border-slate-200 rounded-2xl p-5 hover:shadow-md transition"
+                                            >
+                                                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                                    <div>
+                                                        <span className="inline-flex px-3 py-1 rounded-full bg-blue-50 text-[#123758] text-xs font-bold">
+                                                            {getTypeLabel(
+                                                                content.type
+                                                            )}
+                                                        </span>
+
+                                                        <h3 className="text-lg font-black text-slate-900 mt-3">
+                                                            {
+                                                                content.title
+                                                            }
+                                                        </h3>
+                                                    </div>
+
+                                                    <span className="text-xs text-slate-400">
+                                                        {formatDate(
+                                                            content.createdAt
+                                                        )}
+                                                    </span>
+                                                </div>
+
+                                                <p className="text-sm text-slate-600 mt-3 leading-6 whitespace-pre-wrap">
+                                                    {
+                                                        content.description
+                                                    }
+                                                </p>
+
+                                                {content.author?.name && (
+                                                    <p className="text-xs text-slate-400 mt-4">
+                                                        Posted by{' '}
+                                                        {
+                                                            content.author.name
+                                                        }
+                                                    </p>
+                                                )}
+                                            </article>
+                                        )
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                </main>
             </div>
-            {/* Close button for mobile sidebar */}
-            <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-300 hover:text-white text-lg font-bold">
-              ✕
-            </button>
-          </div>
 
-          <nav className="mt-4 px-4 space-y-2">
-            <a href="/teacher" onClick={() => setSidebarOpen(false)} className="flex items-center space-x-3 p-3 rounded-lg bg-blue-900/50 text-[#d4af37] font-medium transition">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-              <span>ዳሽቦርድ</span>
-            </a>
-            <a href="#homework" onClick={() => setSidebarOpen(false)} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-blue-900/30 text-gray-300 hover:text-white transition">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-              <span>የቤት ስራ / አሳይንመንት</span>
-            </a>
-            <a href="#messages" onClick={() => setSidebarOpen(false)} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-blue-900/30 text-gray-300 hover:text-white transition">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-              <span>የወላጅ መልዕክቶች</span>
-            </a>
-          </nav>
-        </div>
+            {/* MODAL */}
+            {openModal && (
+                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+                        <div className="bg-[#123758] text-white p-5 sm:p-6 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-lg font-black">
+                                    አዲስ መረጃ ይለቁ
+                                </h2>
 
-        {/* Sidebar Footer with Logout Button */}
-        <div className="p-4 border-t border-blue-900 space-y-3">
-          <button 
-            onClick={handleLogout}
-            className="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-bold text-sm shadow transition flex items-center justify-center space-x-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-            <span>Logout</span>
-          </button>
-          <div className="text-xs text-center text-gray-400">
-            Max Technology &copy; 2026
-          </div>
-        </div>
-      </aside>
+                                <p className="text-xs text-slate-300 mt-1">
+                                    Homework,
+                                    assignment
+                                    ወይም message
+                                </p>
+                            </div>
 
-      {/* Backdrop overlay when sidebar is open on mobile */}
-      {sidebarOpen && (
-        <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden" />
-      )}
+                            <button
+                                onClick={() =>
+                                    setOpenModal(
+                                        false
+                                    )
+                                }
+                                className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 text-xl"
+                            >
+                                ×
+                            </button>
+                        </div>
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 p-4 sm:p-6 lg:p-8 space-y-6 overflow-y-auto">
-        <div>
-          <h3 className="text-2xl sm:text-3xl font-extrabold text-[#123758]">
-            እንኳን ደህና መጡ, መምህር!
-          </h3>
-          <p className="text-sm text-gray-600 mt-1">
-            ለተማሪዎች እና ለወላጆች የቤት ስራዎችን፣ አሳይንመንቶችን እና መልዕክቶችን ከዚህ በታች ማስተዳደር ይችላሉ።
-          </p>
-        </div>
+                        <form
+                            onSubmit={
+                                handleSubmit
+                            }
+                            className="p-5 sm:p-6 space-y-5"
+                        >
+                            {/* TYPE */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">
+                                    የይዘቱ ዓይነት
+                                </label>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
-          <h4 className="text-lg font-bold text-[#123758]">
-            ፈጣን ማስተካከያዎች
-          </h4>
-          <button 
-            onClick={() => setOpenModal(true)}
-            className="inline-flex items-center space-x-2 bg-[#123758] hover:bg-blue-900 text-white px-4 py-2.5 rounded-lg font-medium transition shadow-sm text-sm sm:text-base"
-          >
-            <svg className="w-5 h-5 text-[#d4af37]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <span>የቤት ስራ፣ አሳይንመንት ወይም መልዕክት ልቀቅ</span>
-          </button>
-        </div>
+                                <select
+                                    value={
+                                        contentForm.type
+                                    }
+                                    onChange={(
+                                        event
+                                    ) =>
+                                        updateForm(
+                                            'type',
+                                            event
+                                                .target
+                                                .value
+                                        )
+                                    }
+                                    className="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#123758]"
+                                >
+                                    <option value="homework">
+                                        የቤት ስራ
+                                    </option>
 
-        {openModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
-              <div className="bg-[#123758] text-white px-6 py-4 flex justify-between items-center">
-                <h4 className="font-bold text-lg">አዲስ መረጃ መጫኛ</h4>
-                <button onClick={() => setOpenModal(false)} className="text-gray-300 hover:text-white">✕</button>
-              </div>
-              
-              <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">የይዘቱ ዓይነት</label>
-                  <select 
-                    value={contentForm.type}
-                    onChange={e => setContentForm({...contentForm, type: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123758] bg-white"
-                  >
-                    <option value="homework">የቤት ስራ (Homework)</option>
-                    <option value="assignment">አሳይንመንት (Assignment)</option>
-                    <option value="message">የወላጅ መልዕክት (Parent Message)</option>
-                  </select>
+                                    <option value="assignment">
+                                        አሳይንመንት
+                                    </option>
+
+                                    <option value="message">
+                                        የወላጅ መልዕክት
+                                    </option>
+
+                                    <option value="general">
+                                        አጠቃላይ
+                                    </option>
+                                </select>
+                            </div>
+
+                            {/* TITLE */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">
+                                    ርዕስ
+                                </label>
+
+                                <input
+                                    type="text"
+                                    value={
+                                        contentForm.title
+                                    }
+                                    onChange={(
+                                        event
+                                    ) =>
+                                        updateForm(
+                                            'title',
+                                            event
+                                                .target
+                                                .value
+                                        )
+                                    }
+                                    placeholder="የመረጃውን ርዕስ ያስገቡ"
+                                    maxLength={150}
+                                    className="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#123758]"
+                                />
+                            </div>
+
+                            {/* DESCRIPTION */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">
+                                    መግለጫ
+                                </label>
+
+                                <textarea
+                                    rows={6}
+                                    value={
+                                        contentForm.description
+                                    }
+                                    onChange={(
+                                        event
+                                    ) =>
+                                        updateForm(
+                                            'description',
+                                            event
+                                                .target
+                                                .value
+                                        )
+                                    }
+                                    placeholder="ዝርዝር መረጃ ይጻፉ..."
+                                    maxLength={5000}
+                                    className="w-full rounded-xl border border-slate-300 px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-[#123758]"
+                                />
+
+                                <p className="text-right text-xs text-slate-400 mt-1">
+                                    {
+                                        contentForm
+                                            .description
+                                            .length
+                                    }{' '}
+                                    / 5000
+                                </p>
+                            </div>
+
+                            {/* ACTIONS */}
+                            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-3 border-t">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        resetForm();
+                                        setOpenModal(
+                                            false
+                                        );
+                                    }}
+                                    disabled={
+                                        submitting
+                                    }
+                                    className="px-5 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 transition disabled:opacity-50"
+                                >
+                                    ይቅር
+                                </button>
+
+                                <button
+                                    type="submit"
+                                    disabled={
+                                        submitting
+                                    }
+                                    className="px-6 py-3 rounded-xl bg-[#123758] hover:bg-[#0d2942] text-white font-bold transition disabled:opacity-50"
+                                >
+                                    {submitting
+                                        ? 'በመላክ ላይ...'
+                                        : 'ለቀቅ'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">ርዕስ (Title)</label>
-                  <input 
-                    type="text"
-                    placeholder="ርዕስ ያስገቡ"
-                    value={contentForm.title}
-                    onChange={e => setContentForm({...contentForm, title: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123758]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">መግለጫ / ዝርዝር (Description)</label>
-                  <textarea 
-                    rows={4}
-                    placeholder="መግለጫ ይጻፉ..."
-                    value={contentForm.description}
-                    onChange={e => setContentForm({...contentForm, description: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#123758]"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-gray-50 px-6 py-3 flex justify-end space-x-3 border-t">
-                <button 
-                  onClick={() => setOpenModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition"
-                >
-                  ይቅር
-                </button>
-                <button 
-                  onClick={handleSubmit}
-                  className="px-5 py-2 text-sm font-medium bg-[#123758] hover:bg-blue-900 text-white rounded-lg transition shadow"
-                >
-                  ለቀቅ
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
-  );
+            )}
+        </div>
+    );
 }
 
 export default TeacherDashboard;
