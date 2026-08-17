@@ -27,7 +27,12 @@ const userSchema = new mongoose.Schema(
 
         role: {
             type: String,
-            enum: ['student', 'teacher', 'admin', 'hr'],
+            enum: [
+                'student',
+                'teacher',
+                'admin',
+                'hr'
+            ],
             default: 'student'
         },
 
@@ -114,7 +119,12 @@ const studentSchema = new mongoose.Schema(
 
         programLevel: {
             type: String,
-            enum: ['Level', 'Degree', 'Master', 'PhD'],
+            enum: [
+                'Level',
+                'Degree',
+                'Master',
+                'PhD'
+            ],
             default: 'Degree'
         },
 
@@ -194,7 +204,10 @@ const studentSchema = new mongoose.Schema(
     }
 );
 
-const Student = mongoose.model('Student', studentSchema);
+const Student = mongoose.model(
+    'Student',
+    studentSchema
+);
 
 // ==========================================
 // EXAM
@@ -236,14 +249,7 @@ const examSchema = new mongoose.Schema(
             min: 1
         },
 
-        passingScore: {
-            type: Number,
-            default: 50,
-            min: 0,
-            max: 100
-        },
-
-        isPublished: {
+        isActive: {
             type: Boolean,
             default: true
         }
@@ -253,7 +259,10 @@ const examSchema = new mongoose.Schema(
     }
 );
 
-const Exam = mongoose.model('Exam', examSchema);
+const Exam = mongoose.model(
+    'Exam',
+    examSchema
+);
 
 // ==========================================
 // CONTENT
@@ -275,14 +284,13 @@ const contentSchema = new mongoose.Schema(
 
         type: {
             type: String,
-            enum: ['homework', 'assignment', 'message', 'general'],
+            enum: [
+                'homework',
+                'assignment',
+                'message',
+                'general'
+            ],
             default: 'general'
-        },
-
-        author: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
-            default: null
         }
     },
     {
@@ -290,7 +298,10 @@ const contentSchema = new mongoose.Schema(
     }
 );
 
-const Content = mongoose.model('Content', contentSchema);
+const Content = mongoose.model(
+    'Content',
+    contentSchema
+);
 
 // ==========================================
 // QUESTION BANK
@@ -301,7 +312,8 @@ const questionBankSchema = new mongoose.Schema(
         subject: {
             type: String,
             required: true,
-            trim: true
+            trim: true,
+            index: true
         },
 
         questionText: {
@@ -312,32 +324,28 @@ const questionBankSchema = new mongoose.Schema(
 
         optionA: {
             type: String,
-            required: true,
-            trim: true
+            required: true
         },
 
         optionB: {
             type: String,
-            required: true,
-            trim: true
+            required: true
         },
 
         optionC: {
             type: String,
-            default: '',
-            trim: true
+            default: ''
         },
 
         optionD: {
             type: String,
-            default: '',
-            trim: true
+            default: ''
         },
 
         correctAnswer: {
             type: String,
-            required: true,
-            enum: ['A', 'B', 'C', 'D']
+            enum: ['A', 'B', 'C', 'D'],
+            required: true
         },
 
         explanation: {
@@ -356,75 +364,6 @@ const QuestionBank = mongoose.model(
 );
 
 // ==========================================
-// EXAM SUBMISSION
-// ==========================================
-
-const examSubmissionSchema = new mongoose.Schema(
-    {
-        student: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
-            required: true
-        },
-
-        exam: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Exam',
-            required: true
-        },
-
-        answers: {
-            type: Map,
-            of: String,
-            default: {}
-        },
-
-        correctCount: {
-            type: Number,
-            default: 0
-        },
-
-        totalQuestions: {
-            type: Number,
-            default: 0
-        },
-
-        answeredQuestions: {
-            type: Number,
-            default: 0
-        },
-
-        score: {
-            type: Number,
-            default: 0
-        },
-
-        passed: {
-            type: Boolean,
-            default: false
-        },
-
-        submittedAt: {
-            type: Date,
-            default: Date.now
-        }
-    },
-    {
-        timestamps: true
-    }
-);
-
-examSubmissionSchema.index(
-    { student: 1, exam: 1 },
-    { unique: true }
-);
-
-const ExamSubmission = mongoose.model(
-    'ExamSubmission',
-    examSubmissionSchema
-);
-
-// ==========================================
 // EXPORT
 // ==========================================
 
@@ -433,6 +372,5 @@ module.exports = {
     Student,
     Exam,
     Content,
-    QuestionBank,
-    ExamSubmission
+    QuestionBank
 };
