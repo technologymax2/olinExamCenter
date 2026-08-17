@@ -1,211 +1,228 @@
-import React, { useState } from "react";
-
-  const API_URL =
-    process.env.REACT_APP_API_URL ||
-    'https://olinexamcenter.onrender.com';
-
-  // ==========================================
-  // ☁️ IMGBB CONFIGURATION
-  // ==========================================
-  const IMGBB_API_KEY =
-    process.env.REACT_APP_IMGBB_API_KEY ||
-    'ebd592608f4dba1e8271bec8e920c408';
-
-// ======================================================
-// STUDENT PRINT CART PAGE
-// ======================================================
+import React, { useState } from 'react';
 
 function StudentPrintCartPage({ handleLogout }) {
-  // ======================================================
-  // SEARCH STATE
-  // ======================================================
+  // =========================================================
+  // 🌐 API CONFIGURATION
+  // =========================================================
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchFilter, setSearchFilter] = useState("studentId");
+  const API_BASE_URL = (
+    process.env.REACT_APP_API_URL ||
+    'https://olinexamcenter.onrender.com'
+  ).replace(/\/$/, '');
 
-  const [searchResults, setSearchResults] = useState([]);
-  const [printCart, setPrintCart] = useState([]);
+  // =========================================================
+  // 🌍 FRONTEND URL
+  // =========================================================
+  // Used by the QR code.
+  //
+  // If REACT_APP_FRONTEND_URL exists in Vercel:
+  //   it will use that.
+  //
+  // Otherwise:
+  //   it automatically uses the current website URL.
+  // =========================================================
+
+  const FRONTEND_URL = (
+    process.env.REACT_APP_FRONTEND_URL ||
+    window.location.origin
+  ).replace(/\/$/, '');
+
+  // =========================================================
+  // 🏢 COMPANY INFORMATION
+  // =========================================================
+
+  const companyLogoUrl =
+    process.env.REACT_APP_COMPANY_LOGO_URL || '';
+
+  const companyPhone =
+    process.env.REACT_APP_COMPANY_PHONE ||
+    '+251 9XX XXX XXX';
+
+  const companyEmail =
+    process.env.REACT_APP_COMPANY_EMAIL ||
+    'info@maxtechnology.com';
+
+  // =========================================================
+  // 🔄 BASIC STATES
+  // =========================================================
 
   const [loading, setLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
 
-  // ======================================================
-  // CARD STYLE
-  // ======================================================
+  const [searchFilter, setSearchFilter] =
+    useState('phone');
 
-  const [cardStyle, setCardStyle] = useState("standard");
+  const [searchTerm, setSearchTerm] =
+    useState('');
 
-  // ======================================================
-  // COMPANY / COLLEGE INFORMATION
-  // ======================================================
+  const [searchResults, setSearchResults] =
+    useState([]);
 
-  const [companyLogoUrl] = useState(() => {
-    return localStorage.getItem("company_logo_url") || "";
-  });
+  const [statusMessage, setStatusMessage] =
+    useState('');
 
-  const [companyPhone] = useState(() => {
-    return localStorage.getItem("company_phone") || "";
-  });
+  const [errorMessage, setErrorMessage] =
+    useState('');
 
-  const [companyEmail] = useState(() => {
-    return localStorage.getItem("company_email") || "";
-  });
+  const [printCart, setPrintCart] =
+    useState([]);
 
-  const [organizationName] = useState(() => {
-    return (
-      localStorage.getItem("organization_name") ||
-      "MAX TECHNOLOGY"
-    );
-  });
+  const [cardStyle, setCardStyle] =
+    useState('standard');
 
-  // ======================================================
-  // SEARCH STUDENTS
-  // ======================================================
+  // =========================================================
+  // 🔎 SEARCH EMPLOYEE
+  // =========================================================
 
   const handleSearch = async (e) => {
     e.preventDefault();
 
-    if (!searchTerm.trim()) {
-      setStatusMessage("⚠️ እባክዎ የፍለጋ መረጃ ያስገቡ!");
+    const value = searchTerm.trim();
+
+    if (!value) {
+      setErrorMessage(
+        'እባክዎ የፍለጋ መረጃ ያስገቡ!'
+      );
+      setSearchResults([]);
       return;
     }
 
     setLoading(true);
-    setStatusMessage("");
+    setStatusMessage('');
+    setErrorMessage('');
     setSearchResults([]);
 
     try {
-      const query = encodeURIComponent(searchTerm.trim());
-
       /*
-       * IMPORTANT:
-       * Your backend should have:
+       * We first try the HR employee search endpoint.
        *
-       * GET /api/students/search?query=...
+       * phone:
+       *   /api/hr/employees?phoneNumber=...
        *
-       * Example:
-       * /api/students/search?query=ST001
+       * fayda:
+       *   /api/hr/employees?faydaNumber=...
        */
 
-      const res = await fetch(
-        `${API_BASE_URL}/api/students/search?query=${query}`
-      );
+      const parameter =
+        searchFilter === 'phone'
+          ? 'phoneNumber'
+          : 'faydaNumber';
 
-      const data = await res.json();
+      const url =
+        `${API_BASE_URL}/api/hr/employees?` +
+        `${parameter}=${encodeURIComponent(value)}`;
 
-      if (data.success) {
-        const students =
-          data.students ||
-          data.results ||
-          data.data ||
-          [];
+      const response = await fetch(url);
 
-        setSearchResults(students);
+      const data = await response.json();
 
-        if (students.length === 0) {
-          setStatusMessage(
-            "⚠️ ምንም ተማሪ አልተገኘም!"
-          );
-        }
-      } else {
-        setSearchResults([]);
-
-        setStatusMessage(
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
           data.message ||
-            "⚠️ ምንም ተማሪ አልተገኘም!"
+          'የሰራተኛውን መረጃ ማግኘት አልተቻለም!'
         );
       }
-    } catch (err) {
-      console.error("Student search error:", err);
 
-      setSearchResults([]);
+      // =====================================================
+      // Handle different possible API response structures
+      // =====================================================
+
+      let employees = [];
+
+      if (Array.isArray(data)) {
+        employees = data;
+      } else if (Array.isArray(data.employees)) {
+        employees = data.employees;
+      } else if (Array.isArray(data.results)) {
+        employees = data.results;
+      } else if (data.employee) {
+        employees = [data.employee];
+      }
+
+      if (employees.length === 0) {
+        setStatusMessage(
+          'ምንም ሰራተኛ አልተገኘም!'
+        );
+        return;
+      }
+
+      setSearchResults(employees);
 
       setStatusMessage(
-        "❌ የተማሪ ፍለጋ ላይ ስህተት ተፈጥሯል!"
+        `${employees.length} ሰራተኛ(ዎች) ተገኝተዋል።`
+      );
+
+    } catch (error) {
+      console.error(
+        'Employee search error:',
+        error
+      );
+
+      setErrorMessage(
+        error.message ||
+        'የሰራተኛ ፍለጋ ላይ ስህተት ተፈጥሯል!'
       );
     } finally {
       setLoading(false);
     }
   };
 
-  // ======================================================
-  // ADD STUDENT TO PRINT CART
-  // ======================================================
+  // =========================================================
+  // ➕ ADD EMPLOYEE TO PRINT CART
+  // =========================================================
 
-  const addToCart = (student) => {
-    if (!student || !student._id) {
-      setStatusMessage(
-        "❌ የተማሪው ID አልተገኘም!"
+  const addToCart = (employee) => {
+    setErrorMessage('');
+    setStatusMessage('');
+
+    const alreadyExists =
+      printCart.some(
+        (item) => item._id === employee._id
       );
-      return;
-    }
-
-    const alreadyExists = printCart.some(
-      (item) => item._id === student._id
-    );
 
     if (alreadyExists) {
       setStatusMessage(
-        "⚠️ ይህ ተማሪ አስቀድሞ ወደ Print Cart ገብቷል!"
+        'ይህ ሰራተኛ ቀድሞውኑ በማተሚያ ጋሪ ውስጥ አለ!'
       );
       return;
     }
 
-    const newStudent = {
-      ...student,
-      selectedStyle: cardStyle,
+    const employeeWithStyle = {
+      ...employee,
+      selectedStyle: cardStyle
     };
 
     setPrintCart((prev) => [
       ...prev,
-      newStudent,
+      employeeWithStyle
     ]);
 
     setStatusMessage(
-      `✅ ${
-        student.nameAmh ||
-        student.nameEng ||
-        "ተማሪ"
-      } ወደ Print Cart ተጨምሯል!`
+      `${employee.nameAmh || employee.nameEng || 'ሰራተኛ'} ወደ ማተሚያ ዝርዝር ተጨምሯል።`
     );
   };
 
-  // ======================================================
-  // REMOVE STUDENT FROM CART
-  // ======================================================
+  // =========================================================
+  // ❌ REMOVE FROM PRINT CART
+  // =========================================================
 
   const removeFromCart = (id) => {
     setPrintCart((prev) =>
       prev.filter(
-        (student) => student._id !== id
+        (employee) =>
+          employee._id !== id
       )
     );
-
-    setStatusMessage(
-      "✅ ተማሪው ከPrint Cart ተወግዷል!"
-    );
   };
 
-  // ======================================================
-  // CLEAR CART
-  // ======================================================
-
-  const clearCart = () => {
-    setPrintCart([]);
-
-    setStatusMessage(
-      "✅ Print Cart ተጠርጓል!"
-    );
-  };
-
-  // ======================================================
-  // PRINT ALL
-  // ======================================================
+  // =========================================================
+  // 🖨️ PRINT
+  // =========================================================
 
   const handlePrint = () => {
     if (printCart.length === 0) {
-      setStatusMessage(
-        "⚠️ ለማተም ተማሪ የለም!"
+      setErrorMessage(
+        'ለማተም ምንም መታወቂያ አልተመረጠም!'
       );
       return;
     }
@@ -213,262 +230,121 @@ function StudentPrintCartPage({ handleLogout }) {
     window.print();
   };
 
-  // ======================================================
-  // IMAGE URL HELPER
-  // ======================================================
+  // =========================================================
+  // 🧹 CLEAR CART
+  // =========================================================
 
-  const getImageUrl = (imageUrl) => {
-    if (!imageUrl) {
-      return "https://via.placeholder.com/300x300?text=Student";
-    }
-
-    if (
-      imageUrl.startsWith("http://") ||
-      imageUrl.startsWith("https://")
-    ) {
-      return imageUrl;
-    }
-
-    const cleanPath = imageUrl.startsWith("/")
-      ? imageUrl
-      : `/${imageUrl}`;
-
-    return `${API_BASE_URL}${cleanPath}`;
+  const clearCart = () => {
+    setPrintCart([]);
+    setStatusMessage('');
+    setErrorMessage('');
   };
 
-  // ======================================================
-  // QR CODE URL
-  // ======================================================
-
-  const getQrCodeUrl = (student) => {
-    const verifyUrl = `${FRONTEND_URL}/student/verify/${student._id}`;
-
-    return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-      verifyUrl
-    )}`;
-  };
-
-  // ======================================================
-  // STUDENT DISPLAY NAME
-  // ======================================================
-
-  const getStudentNameAmh = (student) => {
-    return (
-      student.nameAmh ||
-      "የተማሪ ስም"
-    );
-  };
-
-  const getStudentNameEng = (student) => {
-    return (
-      student.nameEng ||
-      "Student Name"
-    );
-  };
-
-  // ======================================================
-  // RENDER
-  // ======================================================
+  // =========================================================
+  // 🎨 RENDER
+  // =========================================================
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col justify-between p-3 sm:p-6 lg:p-8 relative print:bg-white print:p-0 overflow-x-hidden">
 
-      {/* ==================================================
-          PRINT CSS
-      ================================================== */}
-
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-
-          @page {
-            size: auto;
-            margin: 5mm;
-          }
-
-          @media print {
-
-            html,
-            body {
-              background: white !important;
-              width: 100% !important;
-              height: auto !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-
-            body * {
-              visibility: hidden;
-            }
-
-            #student-printable-container,
-            #student-printable-container * {
-              visibility: visible;
-            }
-
-            #student-printable-container {
-              position: absolute !important;
-              left: 0 !important;
-              top: 0 !important;
-              width: 100% !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              display: flex !important;
-              flex-direction: column !important;
-              align-items: center !important;
-              gap: 8mm !important;
-            }
-
-            .student-print-wrapper {
-              page-break-inside: avoid !important;
-              break-inside: avoid !important;
-              page-break-after: always !important;
-              break-after: page !important;
-
-              width: 100% !important;
-
-              display: flex !important;
-              flex-direction: row !important;
-              justify-content: center !important;
-              align-items: center !important;
-
-              gap: 8mm !important;
-
-              margin: 0 !important;
-              padding: 0 !important;
-            }
-
-            .student-print-wrapper:last-child {
-              page-break-after: auto !important;
-              break-after: auto !important;
-            }
-
-            .student-card-box {
-              width: 85.6mm !important;
-              height: 54mm !important;
-
-              min-width: 85.6mm !important;
-              max-width: 85.6mm !important;
-
-              min-height: 54mm !important;
-              max-height: 54mm !important;
-
-              background-color: #132943 !important;
-
-              color: white !important;
-
-              border: 2px solid #d4af37 !important;
-
-              border-radius: 4mm !important;
-
-              overflow: hidden !important;
-
-              box-shadow: none !important;
-
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-
-              flex-shrink: 0 !important;
-            }
-
-            .print-hide {
-              display: none !important;
-            }
-          }
-
-          @media print and (max-width: 900px) {
-
-            .student-print-wrapper {
-              flex-direction: column !important;
-              gap: 5mm !important;
-            }
-          }
-
-        `,
-        }}
-      />
-
-      {/* ==================================================
+      {/* =====================================================
           HEADER
-      ================================================== */}
+      ====================================================== */}
 
       <div className="flex flex-wrap justify-between items-center bg-gray-800 p-4 sm:p-5 rounded-2xl shadow-md gap-4 mb-6 print:hidden">
 
         <h2 className="text-lg sm:text-2xl font-bold flex items-center gap-2 text-blue-400">
-          🎓
-          የተማሪ መታወቂያ ማተሚያ
-          (Student ID Print Cart)
+          🖨️ የሰራተኛ መታወቂያ ማተሚያ ሰንጠረዥ
         </h2>
 
-        {handleLogout && (
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition shadow text-sm"
-          >
-            ውጣ (Logout)
-          </button>
-        )}
+        <div className="flex gap-2">
+
+          {printCart.length > 0 && (
+            <button
+              type="button"
+              onClick={clearCart}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition shadow text-sm"
+            >
+              🗑️ ሁሉንም አስወግድ
+            </button>
+          )}
+
+          {handleLogout && (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition shadow text-sm"
+            >
+              ውጣ (Logout)
+            </button>
+          )}
+
+        </div>
+
       </div>
 
-      {/* ==================================================
+      {/* =====================================================
           MAIN
-      ================================================== */}
+      ====================================================== */}
 
-      <div className="flex-1 w-full max-w-7xl mx-auto space-y-6 print:max-w-none print:m-0">
+      <div className="flex-1 w-full max-w-6xl mx-auto space-y-6 print:max-w-none print:m-0">
 
-        {/* ==================================================
-            CARD DESIGN
-        ================================================== */}
+        {/* ===================================================
+            CARD DESIGN SELECTOR
+        ==================================================== */}
 
         <div className="bg-gray-800 p-4 sm:p-5 rounded-2xl shadow-lg border border-gray-700 print:hidden">
 
           <label className="block text-sm font-bold text-[#d4af37] mb-3">
-            🎴 የStudent ID Card ዲዛይን ይምረጡ
+            🎴 የካርድ ዲዛይን ቅርጸት ይምረጡ
           </label>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
 
             <button
               type="button"
               onClick={() =>
-                setCardStyle("standard")
+                setCardStyle('standard')
               }
-              className={`py-3 px-4 rounded-xl font-bold text-sm transition border ${
-                cardStyle === "standard"
-                  ? "bg-[#132943] border-[#d4af37] text-white shadow-lg"
-                  : "bg-gray-900 border-gray-700 text-gray-400 hover:bg-gray-700"
+              className={`py-3 px-2 sm:px-4 rounded-xl font-bold text-xs sm:text-sm transition border ${
+                cardStyle === 'standard'
+                  ? 'bg-[#132943] border-[#d4af37] text-white shadow-lg'
+                  : 'bg-gray-900 border-gray-700 text-gray-400 hover:bg-gray-700'
               }`}
             >
-              🎓 Standard Student ID
+              መደበኛ መታወቂያ
+              <br />
+              Standard ID
             </button>
 
             <button
               type="button"
               onClick={() =>
-                setCardStyle("compact")
+                setCardStyle('chest')
               }
-              className={`py-3 px-4 rounded-xl font-bold text-sm transition border ${
-                cardStyle === "compact"
-                  ? "bg-[#132943] border-[#d4af37] text-white shadow-lg"
-                  : "bg-gray-900 border-gray-700 text-gray-400 hover:bg-gray-700"
+              className={`py-3 px-2 sm:px-4 rounded-xl font-bold text-xs sm:text-sm transition border ${
+                cardStyle === 'chest'
+                  ? 'bg-[#132943] border-[#d4af37] text-white shadow-lg'
+                  : 'bg-gray-900 border-gray-700 text-gray-400 hover:bg-gray-700'
               }`}
             >
-              🪪 Compact Student ID
+              የደረት ባጅ
+              <br />
+              Chest Badge
             </button>
 
           </div>
+
         </div>
 
-        {/* ==================================================
+        {/* ===================================================
             SEARCH
-        ================================================== */}
+        ==================================================== */}
 
         <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-gray-700 print:hidden">
 
           <h3 className="text-lg sm:text-xl font-bold mb-4 text-[#d4af37]">
-            🔍 ተማሪ ፈልግ
+            🔍 ሰራተኛ በስልክ ወይም በፋይዳ ቁጥር ፈልግ
           </h3>
 
           <form
@@ -476,54 +352,42 @@ function StudentPrintCartPage({ handleLogout }) {
             className="flex flex-col sm:flex-row gap-3"
           >
 
-            {/* SEARCH TYPE */}
-
             <select
               value={searchFilter}
               onChange={(e) =>
-                setSearchFilter(e.target.value)
+                setSearchFilter(
+                  e.target.value
+                )
               }
               className="p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm font-semibold"
             >
-              <option value="studentId">
-                በStudent ID
-              </option>
 
               <option value="phone">
-                በስልክ ቁጥር
+                በስልክ ቁጥር (Phone)
               </option>
 
-              <option value="name">
-                በስም
+              <option value="fayda">
+                በፋይዳ ቁጥር (Fayda)
               </option>
 
-              <option value="department">
-                በDepartment
-              </option>
             </select>
-
-            {/* SEARCH INPUT */}
 
             <input
               type="text"
+              placeholder={
+                searchFilter === 'phone'
+                  ? 'ስልክ ቁጥር ያስገቡ (ለምሳሌ: 091...)'
+                  : 'የፋይዳ ቁጥር 16 አሃዝ ያስገቡ'
+              }
               value={searchTerm}
               onChange={(e) =>
-                setSearchTerm(e.target.value)
-              }
-              placeholder={
-                searchFilter === "studentId"
-                  ? "Student ID ያስገቡ"
-                  : searchFilter === "phone"
-                  ? "ስልክ ቁጥር ያስገቡ"
-                  : searchFilter === "department"
-                  ? "Department ያስገቡ"
-                  : "የተማሪ ስም ያስገቡ"
+                setSearchTerm(
+                  e.target.value
+                )
               }
               className="flex-1 p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
               required
             />
-
-            {/* SEARCH BUTTON */}
 
             <button
               type="submit"
@@ -531,246 +395,312 @@ function StudentPrintCartPage({ handleLogout }) {
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition disabled:opacity-50 text-sm"
             >
               {loading
-                ? "እየፈለገ..."
-                : "🔍 ፈልግ"}
+                ? 'እየፈለገ ነው...'
+                : 'ፈልግ (Search)'}
             </button>
 
           </form>
 
           {statusMessage && (
             <p className="mt-3 text-sm font-medium text-green-400">
-              {statusMessage}
+              ✅ {statusMessage}
+            </p>
+          )}
+
+          {errorMessage && (
+            <p className="mt-3 text-sm font-medium text-red-400">
+              ⚠️ {errorMessage}
             </p>
           )}
 
         </div>
 
-        {/* ==================================================
+        {/* ===================================================
             SEARCH RESULTS
-        ================================================== */}
+        ==================================================== */}
 
         {searchResults.length > 0 && (
 
           <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-gray-700 print:hidden">
 
-            <div className="flex justify-between items-center mb-4">
-
-              <h3 className="text-lg font-bold text-blue-300">
-                📋 የፍለጋ ውጤቶች
-                ({searchResults.length})
-              </h3>
-
-            </div>
+            <h3 className="text-lg font-bold mb-4 text-blue-300">
+              📋 የፍለጋ ውጤቶች
+            </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
-              {searchResults.map((student) => (
+              {searchResults.map((emp) => {
 
-                <div
-                  key={student._id}
-                  className="bg-gray-900 p-4 rounded-xl border border-gray-700 flex flex-col justify-between gap-3"
-                >
+                const alreadyAdded =
+                  printCart.some(
+                    (item) =>
+                      item._id === emp._id
+                  );
 
-                  {/* STUDENT INFO */}
+                return (
+                  <div
+                    key={emp._id}
+                    className="bg-gray-900 p-4 rounded-xl border border-gray-700 flex flex-col justify-between gap-3"
+                  >
 
-                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3">
 
-                    <img
-                      src={getImageUrl(
-                        student.imageUrl
-                      )}
-                      alt={getStudentNameEng(
-                        student
-                      )}
-                      className="w-14 h-14 rounded-full object-cover border-2 border-blue-500"
-                    />
+                      <img
+                        src={
+                          emp.imageUrl ||
+                          'https://via.placeholder.com/50'
+                        }
+                        alt={
+                          emp.nameAmh ||
+                          emp.nameEng ||
+                          'Employee'
+                        }
+                        className="w-12 h-12 rounded-full object-cover border border-blue-500"
+                      />
 
-                    <div className="min-w-0">
+                      <div>
 
-                      <h4 className="font-bold text-white text-sm truncate">
-                        {getStudentNameAmh(
-                          student
-                        )}
-                      </h4>
+                        <h4 className="font-bold text-white text-sm">
+                          {emp.nameAmh}
+                        </h4>
 
-                      <p className="text-xs text-gray-400 truncate">
-                        {getStudentNameEng(
-                          student
-                        )}
-                      </p>
+                        <p className="text-xs text-gray-400">
+                          {emp.nameEng}
+                        </p>
 
-                      <p className="text-xs text-blue-400 font-mono mt-1">
-                        {student.studentIdNumber ||
-                          "N/A"}
-                      </p>
+                        <p className="text-xs text-blue-400 font-mono mt-0.5">
+                          {emp.faydaNumber}
+                        </p>
 
-                      <p className="text-xs text-gray-500 truncate">
-                        {student.department ||
-                          "Department N/A"}
-                      </p>
+                        <p className="text-xs text-gray-500">
+                          {emp.positionAmh ||
+                            emp.positionEng ||
+                            '-'}
+                        </p>
+
+                      </div>
 
                     </div>
 
+                    <button
+                      type="button"
+                      onClick={() =>
+                        addToCart(emp)
+                      }
+                      disabled={alreadyAdded}
+                      className={`w-full py-2 ${
+                        alreadyAdded
+                          ? 'bg-gray-600 cursor-not-allowed'
+                          : 'bg-green-600 hover:bg-green-700'
+                      } text-white text-xs font-bold rounded-lg transition shadow`}
+                    >
+                      {alreadyAdded
+                        ? '✓ በጋሪ ውስጥ አለ'
+                        : '➕ ወደ ማተሚያ ዝርዝር ጨምር'}
+                    </button>
+
                   </div>
-
-                  {/* ADD */}
-
-                  <button
-                    onClick={() =>
-                      addToCart(student)
-                    }
-                    className="w-full py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg transition shadow"
-                  >
-                    ➕ ወደ Print Cart ጨምር
-                  </button>
-
-                </div>
-
-              ))}
+                );
+              })}
 
             </div>
 
           </div>
-
         )}
 
-        {/* ==================================================
+        {/* ===================================================
             PRINT CART
-        ================================================== */}
+        ==================================================== */}
 
         <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-gray-700 print:bg-white print:border-none print:p-0 print:shadow-none">
-
-          {/* CART HEADER */}
 
           <div className="flex flex-wrap justify-between items-center gap-3 mb-4 print:hidden">
 
             <h3 className="text-lg sm:text-xl font-bold text-[#d4af37]">
-              🛒 ለማተም የተመረጡ Students
+              🛒 ለማተም የተመረጡ መታወቂያዎች
+              {' '}
               ({printCart.length})
             </h3>
 
             {printCart.length > 0 && (
 
-              <div className="flex gap-2">
-
-                <button
-                  onClick={clearCart}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow transition text-xs sm:text-sm"
-                >
-                  🗑️ Clear All
-                </button>
-
-                <button
-                  onClick={handlePrint}
-                  className="px-4 sm:px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow transition text-xs sm:text-sm flex items-center gap-2"
-                >
-                  🖨️ ሁሉንም አትም
-                  ({printCart.length})
-                </button>
-
-              </div>
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="px-4 sm:px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow transition text-xs sm:text-sm flex items-center gap-2"
+              >
+                🖨️ ሁሉንም አትም
+              </button>
 
             )}
 
           </div>
 
-          {/* EMPTY CART */}
-
           {printCart.length === 0 ? (
 
-            <div className="text-center py-10 text-gray-500 print:hidden text-sm">
-
-              <div className="text-4xl mb-3">
-                🛒
-              </div>
-
-              <p>
-                Print Cart ባዶ ነው።
-              </p>
-
-              <p className="mt-1">
-                ከላይ ተማሪዎችን ፈልገው
-                ወደ Print Cart ይጨምሩ።
-              </p>
-
+            <div className="text-center py-8 text-gray-500 print:hidden text-sm">
+              ማተሚያ ጋሪው ባዶ ነው።
+              እባክዎ ከላይ ሰራተኞችን ፈልገው ይጨምሩ።
             </div>
 
           ) : (
 
-            /* ==================================================
-               PRINTABLE STUDENTS
-            ================================================== */
+            <div className="space-y-6">
 
-            <div
-              id="student-printable-container"
-              className="space-y-8"
-            >
+              {/* =================================================
+                  PRINT CSS
+              ================================================== */}
 
-              {printCart.map((student) => (
-
-                <div
-                  key={student._id}
-                  className="relative bg-gray-900 p-3 sm:p-4 rounded-2xl border border-gray-700 student-print-wrapper print:bg-white print:border-none print:p-0"
-                >
-
-                  {/* REMOVE BUTTON */}
-
-                  <button
-                    onClick={() =>
-                      removeFromCart(
-                        student._id
-                      )
+              <style
+                dangerouslySetInnerHTML={{
+                  __html: `
+                    @page {
+                      size: auto;
+                      margin: 5mm;
                     }
-                    className="absolute top-2 right-2 text-white hover:text-gray-200 font-bold text-xs bg-red-600 w-7 h-7 rounded-full flex items-center justify-center z-20 print:hidden shadow-lg"
-                    title="ከPrint Cart አስወግድ"
+
+                    @media print {
+
+                      html,
+                      body {
+                        background: white !important;
+                        width: 100% !important;
+                        height: auto !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                      }
+
+                      body * {
+                        visibility: hidden;
+                      }
+
+                      #printable-cart-container,
+                      #printable-cart-container * {
+                        visibility: visible;
+                      }
+
+                      #printable-cart-container {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100% !important;
+                        display: flex !important;
+                        flex-direction: column !important;
+                        gap: 5mm !important;
+                      }
+
+                      .print-card-wrapper {
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        margin-bottom: 4mm !important;
+                      }
+
+                      .print-card-box,
+                      .print-badge-box {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                        box-shadow: none !important;
+                      }
+
+                      .print-card-box {
+                        width: 85.6mm !important;
+                        height: 54mm !important;
+                        min-width: 85.6mm !important;
+                        min-height: 54mm !important;
+                        background-color: #132943 !important;
+                        color: #ffffff !important;
+                        border: 2px solid #d4af37 !important;
+                        border-radius: 4mm !important;
+                        overflow: hidden !important;
+                      }
+
+                      .print-badge-box {
+                        width: 85.6mm !important;
+                        height: 54mm !important;
+                        min-width: 85.6mm !important;
+                        min-height: 54mm !important;
+                        background-color: #132943 !important;
+                        color: #ffffff !important;
+                        border: 2px solid #d4af37 !important;
+                        border-radius: 4mm !important;
+                        overflow: hidden !important;
+                      }
+                    }
+                  `
+                }}
+              />
+
+              {/* =================================================
+                  PRINTABLE CONTAINER
+              ================================================== */}
+
+              <div
+                id="printable-cart-container"
+                className="space-y-8"
+              >
+
+                {printCart.map((emp) => (
+
+                  <div
+                    key={emp._id}
+                    className="relative bg-gray-900 p-3 sm:p-4 rounded-2xl border border-gray-700 print-card-wrapper print:bg-white print:border-none print:p-0"
                   >
-                    ✕
-                  </button>
 
-                  {/* ==================================================
-                      STANDARD CARD
-                  ================================================== */}
+                    {/* REMOVE */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        removeFromCart(emp._id)
+                      }
+                      className="absolute top-2 right-2 text-white hover:text-gray-200 font-bold text-xs bg-red-600 w-7 h-7 rounded-full flex items-center justify-center z-20 print:hidden shadow-lg"
+                      title="ከጋሪ አስወግድ"
+                    >
+                      ✕
+                    </button>
 
-                  {student.selectedStyle ===
-                    "standard" && (
+                    {/* =================================================
+                        STANDARD CARD
+                    ================================================== */}
 
-                    <div className="flex flex-col gap-4">
+                    {emp.selectedStyle === 'standard' && (
 
-                      <div className="text-xs font-bold text-[#d4af37] print:hidden">
-                        🎓 Student ID — Front & Back
-                      </div>
+                      <div className="space-y-4">
 
-                      <div className="flex flex-row flex-wrap justify-center items-center gap-4">
+                        <div className="text-xs font-bold text-[#d4af37] print:hidden mb-1">
+                          የፊት እና የኋላ ገጽ
+                          {' '}
+                          (Standard ID)
+                        </div>
 
-                        {/* ==================================================
-                            FRONT
-                        ================================================== */}
+                        <div className="flex flex-row flex-wrap justify-center items-center gap-4">
 
-                        <div className="student-card-box relative w-[340px] h-[215px] bg-[#132943] text-white rounded-xl shadow-2xl border-2 border-[#d4af37] overflow-hidden flex flex-col justify-between p-3 shrink-0">
+                          {/* ================= FRONT ================= */}
 
-                          {/* DECORATION */}
+                          <div className="print-card-box relative w-[300px] h-[450px] bg-[#132943] text-white rounded-xl shadow-2xl border-2 border-[#d4af37] overflow-hidden flex flex-col mx-auto shrink-0 p-3 justify-between">
 
-                          <div className="absolute bottom-0 right-0 w-full h-1/2 bg-gradient-to-t from-[#d4af37]/20 to-transparent pointer-events-none rounded-tl-[80px]" />
+                            <div className="absolute bottom-0 right-0 w-full h-1/2 bg-gradient-to-t from-[#d4af37]/20 to-transparent pointer-events-none rounded-tl-[80px]" />
 
-                          {/* HEADER */}
+                            <div className="text-center relative z-10">
 
-                          <div className="text-center relative z-10">
+                              <div className="w-11 h-11 mx-auto bg-white rounded-full flex items-center justify-center border-2 border-[#d4af37] shadow mb-1 overflow-hidden">
 
-                            <div className="flex items-center justify-center gap-2">
-
-                              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center border-2 border-[#d4af37] overflow-hidden">
-
-                                {companyLogoUrl ? (
+                                {emp.logoUrl ||
+                                companyLogoUrl ? (
 
                                   <img
-                                    src={companyLogoUrl}
+                                    src={
+                                      emp.logoUrl ||
+                                      companyLogoUrl
+                                    }
                                     alt="Logo"
                                     className="w-full h-full object-cover"
                                   />
 
                                 ) : (
 
-                                  <span className="text-[8px] font-black text-[#132943]">
+                                  <span className="text-[10px] font-black text-[#132943]">
                                     LOGO
                                   </span>
 
@@ -778,616 +708,223 @@ function StudentPrintCartPage({ handleLogout }) {
 
                               </div>
 
-                              <div className="text-left">
+                              <h2 className="text-[14px] font-black tracking-widest text-white">
+                                MAX TECHNOLOGY
+                              </h2>
 
-                                <h2 className="text-[13px] font-black tracking-widest text-white">
-                                  {organizationName}
-                                </h2>
-
-                                <p className="text-[8px] text-[#d4af37] font-bold tracking-wider">
-                                  STUDENT IDENTIFICATION CARD
-                                </p>
-
-                              </div>
+                              <p className="text-[10px] text-[#d4af37] font-bold tracking-wider">
+                                EMPLOYEE ID CARD
+                              </p>
 
                             </div>
 
-                          </div>
-
-                          {/* STUDENT CONTENT */}
-
-                          <div className="flex items-center gap-3 relative z-10">
-
                             {/* PHOTO */}
 
-                            <div className="w-[78px] h-[90px] rounded-lg p-0.5 bg-gradient-to-tr from-[#d4af37] to-blue-400 shadow-md shrink-0">
+                            <div className="flex flex-col items-center relative z-10 px-2 my-1">
 
-                              <img
-                                src={getImageUrl(
-                                  student.imageUrl
-                                )}
-                                alt={getStudentNameEng(
-                                  student
-                                )}
-                                className="w-full h-full object-cover rounded-md bg-white"
-                              />
+                              <div className="w-24 h-24 rounded-full p-0.5 bg-gradient-to-tr from-[#d4af37] to-blue-400 shadow-md">
+
+                                <img
+                                  src={
+                                    emp.imageUrl ||
+                                    'https://via.placeholder.com/120'
+                                  }
+                                  alt={
+                                    emp.nameEng ||
+                                    'Employee'
+                                  }
+                                  className="w-full h-full object-cover rounded-full bg-white"
+                                />
+
+                              </div>
+
+                              <h3 className="text-[15px] font-black mt-2 text-center text-white leading-tight">
+                                {emp.nameAmh}
+                              </h3>
+
+                              <h3 className="text-[13px] font-bold text-center text-gray-200 leading-tight">
+                                {emp.nameEng}
+                              </h3>
+
+                              <p className="text-[11px] text-[#d4af37] font-bold text-center mt-0.5">
+                                {emp.positionAmh}
+                                {' / '}
+                                {emp.positionEng}
+                              </p>
 
                             </div>
 
                             {/* DETAILS */}
 
-                            <div className="min-w-0 flex-1">
+                            <div className="py-2.5 px-3 text-[11.5px] font-semibold space-y-1.5 text-white relative z-10 bg-black/30 rounded-xl border border-[#d4af37]/30">
 
-                              <h3 className="text-[13px] font-black text-white leading-tight">
-                                {getStudentNameAmh(
-                                  student
-                                )}
+                              <div className="flex justify-between border-b border-white/20 pb-0.5">
+
+                                <span className="text-gray-300 font-bold">
+                                  ዜግነት:
+                                </span>
+
+                                <span className="text-white font-bold">
+                                  {emp.nationality ||
+                                    'Ethiopian'}
+                                </span>
+
+                              </div>
+
+                              <div className="flex justify-between border-b border-white/20 pb-0.5">
+
+                                <span className="text-gray-300 font-bold">
+                                  አድራሻ:
+                                </span>
+
+                                <span className="text-white font-bold text-right truncate max-w-[150px]">
+                                  {emp.addressAmh ||
+                                    emp.addressEng ||
+                                    'Addis Ababa'}
+                                </span>
+
+                              </div>
+
+                              <div className="flex justify-between pb-0.5">
+
+                                <span className="text-gray-300 font-bold">
+                                  ስልክ:
+                                </span>
+
+                                <span className="font-mono text-white font-bold">
+                                  {emp.phoneNumber ||
+                                    '-'}
+                                </span>
+
+                              </div>
+
+                            </div>
+
+                            <div className="text-center py-1.5 text-[9.5px] font-bold text-[#d4af37] bg-[#0c1b2d] -mx-3 -mb-3 border-t border-[#d4af37]/30 z-10">
+                              Max Technology Employee Card
+                            </div>
+
+                          </div>
+
+                          {/* ================= BACK ================= */}
+
+                          <div className="print-card-box relative w-[300px] h-[450px] bg-[#132943] text-white rounded-xl shadow-2xl border-2 border-[#d4af37] overflow-hidden flex flex-col justify-between p-4 mx-auto shrink-0">
+
+                            <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-[#d4af37]/10 to-transparent pointer-events-none" />
+
+                            <div className="relative z-10">
+
+                              <h3 className="text-[12px] font-black text-[#d4af37] border-b border-white/20 pb-1.5 mb-2.5 tracking-wider text-center">
+                                የካርድ መረጃ / ID Details
                               </h3>
 
-                              <h3 className="text-[10px] font-bold text-gray-200 leading-tight mt-0.5">
-                                {getStudentNameEng(
-                                  student
-                                )}
-                              </h3>
+                              <div className="text-[10.5px] font-semibold space-y-1.5 text-white bg-black/30 p-2.5 rounded-xl border border-[#d4af37]/30 mb-2.5">
 
-                              <p className="text-[9px] text-[#d4af37] font-bold mt-1">
-                                ID:{" "}
-                                {student.studentIdNumber ||
-                                  "-"}
-                              </p>
+                                <div className="flex justify-between border-b border-white/20 pb-1">
 
-                              <p className="text-[8.5px] text-gray-200 mt-0.5 truncate">
-                                {student.department ||
-                                  "Department"}
-                              </p>
-
-                              <p className="text-[8.5px] text-gray-300 mt-0.5">
-                                {student.programLevel ||
-                                  "Degree"}
-                              </p>
-
-                            </div>
-
-                          </div>
-
-                          {/* BOTTOM DETAILS */}
-
-                          <div className="grid grid-cols-3 gap-1 text-[7.5px] font-semibold text-white relative z-10 bg-black/30 rounded-lg border border-[#d4af37]/30 p-1.5">
-
-                            <div>
-                              <span className="text-gray-400 block">
-                                Level
-                              </span>
-
-                              <span className="font-bold">
-                                {student.programLevel ||
-                                  "-"}
-                              </span>
-                            </div>
-
-                            <div>
-                              <span className="text-gray-400 block">
-                                Year
-                              </span>
-
-                              <span className="font-bold">
-                                {student.academicYear ||
-                                  "-"}
-                              </span>
-                            </div>
-
-                            <div>
-                              <span className="text-gray-400 block">
-                                Semester
-                              </span>
-
-                              <span className="font-bold">
-                                {student.semester ||
-                                  "-"}
-                              </span>
-                            </div>
-
-                          </div>
-
-                          {/* FOOTER */}
-
-                          <div className="text-center py-1 text-[7px] font-bold text-[#d4af37] bg-[#0c1b2d] -mx-3 -mb-3 border-t border-[#d4af37]/30 z-10">
-
-                            Official Student Identification Card
-
-                          </div>
-
-                        </div>
-
-                        {/* ==================================================
-                            BACK
-                        ================================================== */}
-
-                        <div className="student-card-box relative w-[340px] h-[215px] bg-[#132943] text-white rounded-xl shadow-2xl border-2 border-[#d4af37] overflow-hidden flex flex-col justify-between p-3 shrink-0">
-
-                          <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-[#d4af37]/10 to-transparent pointer-events-none" />
-
-                          {/* TITLE */}
-
-                          <div className="relative z-10">
-
-                            <h3 className="text-[10px] font-black text-[#d4af37] border-b border-white/20 pb-1 mb-2 tracking-wider text-center">
-
-                              የተማሪ መታወቂያ መረጃ
-                              / STUDENT DETAILS
-
-                            </h3>
-
-                            {/* INFO */}
-
-                            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[7.5px] font-semibold text-white bg-black/30 p-2 rounded-lg border border-[#d4af37]/30">
-
-                              <div>
-                                <span className="text-gray-400 block">
-                                  Student ID
-                                </span>
-
-                                <span className="font-black">
-                                  {student.studentIdNumber ||
-                                    "-"}
-                                </span>
-                              </div>
-
-                              <div>
-                                <span className="text-gray-400 block">
-                                  Gender
-                                </span>
-
-                                <span>
-                                  {student.gender ||
-                                    "-"}
-                                </span>
-                              </div>
-
-                              <div>
-                                <span className="text-gray-400 block">
-                                  Birth Date
-                                </span>
-
-                                <span>
-                                  {student.birthDate ||
-                                    "-"}
-                                </span>
-                              </div>
-
-                              <div>
-                                <span className="text-gray-400 block">
-                                  Age
-                                </span>
-
-                                <span>
-                                  {student.age ||
-                                    "-"}
-                                </span>
-                              </div>
-
-                              <div>
-                                <span className="text-gray-400 block">
-                                  Department
-                                </span>
-
-                                <span className="truncate">
-                                  {student.department ||
-                                    "-"}
-                                </span>
-                              </div>
-
-                              <div>
-                                <span className="text-gray-400 block">
-                                  Nationality
-                                </span>
-
-                                <span>
-                                  {student.nationality ||
-                                    "ኢትዮጵያዊ"}
-                                </span>
-                              </div>
-
-                            </div>
-
-                          </div>
-
-                          {/* GUARDIAN + PHONE */}
-
-                          <div className="relative z-10 grid grid-cols-2 gap-2 text-[7.5px] bg-black/30 p-2 rounded-lg border border-[#d4af37]/30">
-
-                            <div>
-
-                              <span className="text-gray-400 block">
-                                Student Phone
-                              </span>
-
-                              <span className="font-bold">
-                                {student.phoneNumber ||
-                                  "-"}
-                              </span>
-
-                            </div>
-
-                            <div>
-
-                              <span className="text-gray-400 block">
-                                Guardian
-                              </span>
-
-                              <span className="font-bold truncate">
-                                {student.guardianName ||
-                                  "-"}
-                              </span>
-
-                            </div>
-
-                            <div>
-
-                              <span className="text-gray-400 block">
-                                Guardian Phone
-                              </span>
-
-                              <span className="font-bold">
-                                {student.guardianPhone ||
-                                  "-"}
-                              </span>
-
-                            </div>
-
-                            <div>
-
-                              <span className="text-gray-400 block">
-                                Woreda / City
-                              </span>
-
-                              <span className="font-bold truncate">
-                                {student.woreda ||
-                                  "-"}{" "}
-                                /{" "}
-                                {student.city ||
-                                  "-"}
-                              </span>
-
-                            </div>
-
-                          </div>
-
-                          {/* ISSUE / EXPIRE */}
-
-                          <div className="grid grid-cols-2 gap-2 relative z-10 text-[7.5px]">
-
-                            <div className="bg-black/30 rounded-lg p-1.5 border border-[#d4af37]/30">
-
-                              <span className="text-gray-400 block">
-                                Date of Issue
-                              </span>
-
-                              <span className="font-bold text-white">
-                                {student.dateOfIssue ||
-                                  "-"}
-                              </span>
-
-                            </div>
-
-                            <div className="bg-black/30 rounded-lg p-1.5 border border-[#d4af37]/30">
-
-                              <span className="text-gray-400 block">
-                                Expire Date
-                              </span>
-
-                              <span className="font-bold text-yellow-300">
-                                {student.expireDate ||
-                                  "-"}
-                              </span>
-
-                            </div>
-
-                          </div>
-
-                          {/* QR */}
-
-                          <div className="absolute right-3 top-[45px] flex flex-col items-center">
-
-                            <div className="bg-white p-1 rounded">
-
-                              <img
-                                src={getQrCodeUrl(
-                                  student
-                                )}
-                                alt="Student Verification QR"
-                                style={{
-                                  width: "58px",
-                                  height: "58px",
-                                  display: "block",
-                                }}
-                              />
-
-                            </div>
-
-                            <span className="text-[5.5px] text-[#d4af37] font-black mt-0.5">
-                              SCAN TO VERIFY
-                            </span>
-
-                          </div>
-
-                          {/* FOOTER */}
-
-                          <div className="relative z-10 bg-[#0c1b2d] -mx-3 -mb-3 py-1 px-2 text-center border-t border-[#d4af37]/30">
-
-                            <p className="text-[6.5px] font-bold text-gray-300">
-
-                              Authorized Student ID —
-                              {organizationName}
-
-                            </p>
-
-                          </div>
-
-                        </div>
-
-                      </div>
-
-                    </div>
-                  )}
-
-                  {/* ==================================================
-                      COMPACT DESIGN
-                  ================================================== */}
-
-                  {student.selectedStyle ===
-                    "compact" && (
-
-                    <div className="space-y-4">
-
-                      <div className="text-xs font-bold text-[#d4af37] print:hidden">
-                        🪪 Compact Student ID
-                      </div>
-
-                      <div className="flex flex-row flex-wrap justify-center gap-4">
-
-                        {/* COMPACT FRONT */}
-
-                        <div className="student-card-box relative w-[340px] h-[215px] bg-[#132943] text-white rounded-xl shadow-2xl border-2 border-[#d4af37] overflow-hidden p-3 shrink-0">
-
-                          <div className="flex items-center justify-between border-b border-white/20 pb-2">
-
-                            <div className="flex items-center gap-2">
-
-                              <div className="w-9 h-9 bg-white rounded-full overflow-hidden border border-[#d4af37]">
-
-                                {companyLogoUrl ? (
-
-                                  <img
-                                    src={companyLogoUrl}
-                                    alt="Logo"
-                                    className="w-full h-full object-cover"
-                                  />
-
-                                ) : (
-
-                                  <span className="text-[7px] font-black text-[#132943] flex items-center justify-center h-full">
-                                    LOGO
+                                  <span className="text-gray-300 font-bold">
+                                    ድርጅት ስልክ:
                                   </span>
 
-                                )}
+                                  <span className="font-mono text-white font-bold">
+                                    {emp.orgPhoneNumber ||
+                                      companyPhone ||
+                                      'N/A'}
+                                  </span>
+
+                                </div>
+
+                                <div className="flex justify-between pb-0.5">
+
+                                  <span className="text-gray-300 font-bold">
+                                    ኢሜይል:
+                                  </span>
+
+                                  <span className="text-white font-bold truncate max-w-[150px]">
+                                    {emp.orgEmail ||
+                                      companyEmail ||
+                                      'N/A'}
+                                  </span>
+
+                                </div>
 
                               </div>
 
-                              <div>
+                              <div className="text-[11px] font-semibold space-y-1.5 text-white bg-black/30 p-2.5 rounded-xl border border-[#d4af37]/30">
 
-                                <h2 className="text-[11px] font-black">
-                                  {organizationName}
-                                </h2>
+                                <div className="flex justify-between border-b border-white/20 pb-1">
 
-                                <p className="text-[7px] text-[#d4af37] font-bold">
-                                  STUDENT ID
-                                </p>
+                                  <span className="text-gray-300 font-bold">
+                                    የፋይዳ ቁጥር:
+                                  </span>
+
+                                  <span className="font-mono font-black text-white text-[10px]">
+                                    {emp.faydaNumber}
+                                  </span>
+
+                                </div>
+
+                                <div className="flex justify-between border-b border-white/20 pb-1">
+
+                                  <span className="text-gray-300 font-bold">
+                                    የወጣበት ቀን:
+                                  </span>
+
+                                  <span className="text-white font-bold">
+                                    {emp.dateOfIssue}
+                                  </span>
+
+                                </div>
+
+                                <div className="flex justify-between pb-0.5">
+
+                                  <span className="text-gray-300 font-bold">
+                                    የሚያበቃበት:
+                                  </span>
+
+                                  <span className="text-yellow-300 font-black">
+                                    {emp.expireDate}
+                                  </span>
+
+                                </div>
 
                               </div>
 
                             </div>
 
-                            <span className="text-[7px] text-gray-300">
-                              {student.programLevel ||
-                                "Degree"}
-                            </span>
+                            {/* QR */}
 
-                          </div>
+                            <div className="relative z-10 flex flex-col items-center justify-center my-auto bg-black/30 p-3 rounded-xl border border-[#d4af37]/30">
 
-                          <div className="flex items-center gap-3 mt-3">
-
-                            <div className="w-[70px] h-[82px] rounded-lg overflow-hidden border-2 border-[#d4af37] shrink-0">
-
-                              <img
-                                src={getImageUrl(
-                                  student.imageUrl
-                                )}
-                                alt="Student"
-                                className="w-full h-full object-cover"
-                              />
-
-                            </div>
-
-                            <div className="space-y-1 min-w-0">
-
-                              <h3 className="text-[12px] font-black truncate">
-                                {getStudentNameAmh(
-                                  student
-                                )}
-                              </h3>
-
-                              <p className="text-[9px] text-gray-300 truncate">
-                                {getStudentNameEng(
-                                  student
-                                )}
-                              </p>
-
-                              <p className="text-[8px] text-[#d4af37] font-bold">
-                                {student.studentIdNumber ||
-                                  "-"}
-                              </p>
-
-                              <p className="text-[8px] text-gray-300 truncate">
-                                {student.department ||
-                                  "-"}
-                              </p>
-
-                              <p className="text-[8px] text-gray-300">
-                                Year:{" "}
-                                {student.academicYear ||
-                                  "-"}
-                              </p>
-
-                              <p className="text-[8px] text-gray-300">
-                                Semester:{" "}
-                                {student.semester ||
-                                  "-"}
-                              </p>
-
-                            </div>
-
-                            <div className="ml-auto flex flex-col items-center">
-
-                              <div className="bg-white p-1 rounded">
+                              <div className="bg-white p-2.5 rounded-xl shadow-md">
 
                                 <img
-                                  src={getQrCodeUrl(
-                                    student
-                                  )}
-                                  alt="QR"
+                                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+                                    `${FRONTEND_URL}/verify/${emp._id}`
+                                  )}`}
+                                  alt="QR Code"
                                   style={{
-                                    width: "58px",
-                                    height: "58px",
-                                    display: "block",
+                                    width: '120px',
+                                    height: '120px',
+                                    display: 'block'
                                   }}
                                 />
 
                               </div>
 
-                              <span className="text-[5px] text-[#d4af37] mt-1 font-black">
-                                VERIFY
+                              <span className="text-[10px] text-[#d4af37] font-black mt-2 tracking-wider">
+                                SCAN TO VERIFY
                               </span>
 
                             </div>
 
-                          </div>
+                            <div className="relative z-10 bg-[#0c1b2d] -mx-4 -mb-4 py-2 px-2 text-center border-t border-[#d4af37]/30">
 
-                          <div className="absolute bottom-0 left-0 right-0 bg-[#0c1b2d] border-t border-[#d4af37]/30 text-center py-1">
+                              <p className="text-[9px] font-bold text-gray-300">
+                                Authorized Employee ID - Max Technology
+                              </p>
 
-                            <span className="text-[6.5px] font-bold text-gray-300">
-                              Official Student Identification Card
-                            </span>
-
-                          </div>
-
-                        </div>
-
-                        {/* COMPACT BACK */}
-
-                        <div className="student-card-box relative w-[340px] h-[215px] bg-[#132943] text-white rounded-xl shadow-2xl border-2 border-[#d4af37] overflow-hidden p-3 shrink-0">
-
-                          <h3 className="text-[10px] font-black text-[#d4af37] text-center border-b border-white/20 pb-2">
-
-                            STUDENT INFORMATION
-
-                          </h3>
-
-                          <div className="grid grid-cols-2 gap-2 mt-3 text-[8px]">
-
-                            <div className="bg-black/30 rounded-lg p-2">
-                              <span className="text-gray-400 block">
-                                Father
-                              </span>
-                              <span className="font-bold">
-                                {student.fatherNameAmh ||
-                                  "-"}
-                              </span>
                             </div>
-
-                            <div className="bg-black/30 rounded-lg p-2">
-                              <span className="text-gray-400 block">
-                                Grandfather
-                              </span>
-                              <span className="font-bold">
-                                {student.grandfatherNameAmh ||
-                                  "-"}
-                              </span>
-                            </div>
-
-                            <div className="bg-black/30 rounded-lg p-2">
-                              <span className="text-gray-400 block">
-                                Mother
-                              </span>
-                              <span className="font-bold">
-                                {student.motherNameAmh ||
-                                  "-"}
-                              </span>
-                            </div>
-
-                            <div className="bg-black/30 rounded-lg p-2">
-                              <span className="text-gray-400 block">
-                                Phone
-                              </span>
-                              <span className="font-bold">
-                                {student.phoneNumber ||
-                                  "-"}
-                              </span>
-                            </div>
-
-                            <div className="bg-black/30 rounded-lg p-2">
-                              <span className="text-gray-400 block">
-                                City
-                              </span>
-                              <span className="font-bold">
-                                {student.city ||
-                                  "-"}
-                              </span>
-                            </div>
-
-                            <div className="bg-black/30 rounded-lg p-2">
-                              <span className="text-gray-400 block">
-                                Woreda
-                              </span>
-                              <span className="font-bold">
-                                {student.woreda ||
-                                  "-"}
-                              </span>
-                            </div>
-
-                          </div>
-
-                          <div className="mt-3 bg-black/30 rounded-lg p-2 text-[8px]">
-
-                            <div className="flex justify-between border-b border-white/10 pb-1 mb-1">
-                              <span className="text-gray-400">
-                                Issue Date
-                              </span>
-
-                              <span className="font-bold">
-                                {student.dateOfIssue ||
-                                  "-"}
-                              </span>
-                            </div>
-
-                            <div className="flex justify-between">
-                              <span className="text-gray-400">
-                                Expire Date
-                              </span>
-
-                              <span className="font-bold text-yellow-300">
-                                {student.expireDate ||
-                                  "-"}
-                              </span>
-                            </div>
-
-                          </div>
-
-                          <div className="absolute bottom-0 left-0 right-0 bg-[#0c1b2d] border-t border-[#d4af37]/30 text-center py-1">
-
-                            <span className="text-[6.5px] font-bold text-gray-300">
-                              {organizationName} — Student Affairs
-                            </span>
 
                           </div>
 
@@ -1395,23 +932,281 @@ function StudentPrintCartPage({ handleLogout }) {
 
                       </div>
 
-                    </div>
-                  )}
+                    )}
 
-                </div>
+                    {/* =================================================
+                        CHEST BADGE
+                    ================================================== */}
 
-              ))}
+                    {emp.selectedStyle === 'chest' && (
+
+                      <div className="space-y-4">
+
+                        <div className="text-xs font-bold text-[#d4af37] print:hidden mb-1">
+                          የፊት እና የኋላ ገጽ
+                          {' '}
+                          (Chest Badge)
+                        </div>
+
+                        <div className="flex flex-row flex-wrap justify-center items-center gap-3">
+
+                          {/* ================= BADGE FRONT ================= */}
+
+                          <div className="print-badge-box relative w-[340px] h-[200px] bg-[#132943] text-white rounded-xl shadow-2xl border-2 border-[#d4af37] overflow-hidden flex flex-col justify-between p-4 shrink-0 mx-auto">
+
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#d4af37]/15 to-transparent pointer-events-none rounded-bl-full" />
+
+                            <div className="flex items-center justify-between border-b border-white/20 pb-2 relative z-10">
+
+                              <div className="flex items-center gap-2">
+
+                                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center border border-[#d4af37] shadow overflow-hidden">
+
+                                  {emp.logoUrl ||
+                                  companyLogoUrl ? (
+
+                                    <img
+                                      src={
+                                        emp.logoUrl ||
+                                        companyLogoUrl
+                                      }
+                                      alt="Logo"
+                                      className="w-full h-full object-cover"
+                                    />
+
+                                  ) : (
+
+                                    <span className="text-[8px] font-black text-[#132943]">
+                                      LOGO
+                                    </span>
+
+                                  )}
+
+                                </div>
+
+                                <div>
+
+                                  <h2 className="text-[12px] font-black tracking-wider text-white">
+                                    MAX TECHNOLOGY
+                                  </h2>
+
+                                  <p className="text-[8.5px] text-[#d4af37] font-bold">
+                                    EMPLOYEE BADGE
+                                  </p>
+
+                                </div>
+
+                              </div>
+
+                              <div className="text-right text-[8.5px] font-semibold text-gray-200">
+
+                                <div>
+                                  ስልክ:
+                                  {' '}
+                                  {emp.orgPhoneNumber ||
+                                    companyPhone}
+                                </div>
+
+                                <div>
+                                  ኢሜይል:
+                                  {' '}
+                                  {emp.orgEmail ||
+                                    companyEmail}
+                                </div>
+
+                              </div>
+
+                            </div>
+
+                            <div className="flex items-center justify-between gap-3 my-auto relative z-10">
+
+                              <div className="flex items-center gap-3">
+
+                                <div className="w-20 h-20 rounded-xl p-0.5 bg-gradient-to-tr from-[#d4af37] to-blue-400 shadow-md shrink-0">
+
+                                  <img
+                                    src={
+                                      emp.imageUrl ||
+                                      'https://via.placeholder.com/120'
+                                    }
+                                    alt={
+                                      emp.nameEng ||
+                                      'Employee'
+                                    }
+                                    className="w-full h-full object-cover rounded-lg bg-white"
+                                  />
+
+                                </div>
+
+                                <div className="space-y-0.5">
+
+                                  <h3 className="text-[14px] font-black text-white leading-tight">
+                                    {emp.nameAmh}
+                                  </h3>
+
+                                  <h3 className="text-[11px] font-bold text-gray-200 leading-tight">
+                                    {emp.nameEng}
+                                  </h3>
+
+                                  <p className="text-[10px] text-[#d4af37] font-bold">
+                                    {emp.positionAmh}
+                                  </p>
+
+                                  <div className="text-[9.5px] font-semibold text-gray-200 mt-0.5">
+
+                                    <div>
+                                      ከተማ:
+                                      {' '}
+                                      {emp.city ||
+                                        '-'}
+                                      {' | '}
+                                      ስልክ:
+                                      {' '}
+                                      {emp.phoneNumber ||
+                                        '-'}
+                                    </div>
+
+                                  </div>
+
+                                </div>
+
+                              </div>
+
+                              {/* QR */}
+
+                              <div className="flex flex-col items-center bg-black/30 p-2 rounded-xl border border-[#d4af37]/30 shrink-0">
+
+                                <div className="bg-white p-1.5 rounded">
+
+                                  <img
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(
+                                      `${FRONTEND_URL}/verify/${emp._id}`
+                                    )}`}
+                                    alt="QR Code"
+                                    style={{
+                                      width: '65px',
+                                      height: '65px',
+                                      display: 'block'
+                                    }}
+                                  />
+
+                                </div>
+
+                                <span className="text-[7.5px] text-[#d4af37] font-black mt-1">
+                                  SCAN
+                                </span>
+
+                              </div>
+
+                            </div>
+
+                            <div className="bg-[#0c1b2d] -mx-4 -mb-4 py-1.5 px-2 text-center border-t border-[#d4af37]/30 text-[8.5px] font-bold text-gray-300 relative z-10">
+                              Authorized Corporate Badge - Max Technology
+                            </div>
+
+                          </div>
+
+                          {/* ================= BADGE BACK ================= */}
+
+                          <div className="print-badge-box relative w-[340px] h-[200px] bg-[#132943] text-white rounded-xl shadow-2xl border-2 border-[#d4af37] overflow-hidden flex flex-col justify-between p-4 shrink-0 mx-auto">
+
+                            <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-[#d4af37]/10 to-transparent pointer-events-none rounded-tr-full" />
+
+                            <div className="flex justify-between items-center border-b border-white/20 pb-2 relative z-10">
+
+                              <h3 className="text-[11px] font-black text-[#d4af37] tracking-wider">
+                                የባጅ ተጨማሪ መረጃ
+                              </h3>
+
+                              <span className="text-[8.5px] font-mono font-bold text-gray-200">
+                                ፋይዳ:
+                                {' '}
+                                {emp.faydaNumber}
+                              </span>
+
+                            </div>
+
+                            <div className="flex flex-col justify-center my-auto px-1 space-y-2 relative z-10">
+
+                              <div className="text-[10.5px] font-bold text-white grid grid-cols-2 gap-3 bg-black/30 p-3 rounded-xl border border-[#d4af37]/30">
+
+                                <div>
+                                  <span className="text-gray-300">
+                                    የወጣበት ቀን:
+                                  </span>
+                                  {' '}
+                                  <span className="text-white font-black">
+                                    {emp.dateOfIssue}
+                                  </span>
+                                </div>
+
+                                <div>
+                                  <span className="text-gray-300">
+                                    የሚያበቃበት:
+                                  </span>
+                                  {' '}
+                                  <span className="text-yellow-300 font-black">
+                                    {emp.expireDate}
+                                  </span>
+                                </div>
+
+                                <div>
+                                  <span className="text-gray-300">
+                                    ዜግነት:
+                                  </span>
+                                  {' '}
+                                  <span className="text-white font-black">
+                                    {emp.nationality ||
+                                      'Ethiopian'}
+                                  </span>
+                                </div>
+
+                                <div>
+                                  <span className="text-gray-300">
+                                    እድሜ:
+                                  </span>
+                                  {' '}
+                                  <span className="text-white font-black">
+                                    {emp.age || '-'}
+                                  </span>
+                                </div>
+
+                              </div>
+
+                            </div>
+
+                            <div className="bg-[#0c1b2d] -mx-4 -mb-4 py-1.5 px-2 text-center border-t border-[#d4af37]/30 text-[8.5px] font-bold text-gray-300 relative z-10">
+                              Max Technology - Official Badge Identification
+                            </div>
+
+                          </div>
+
+                        </div>
+
+                      </div>
+
+                    )}
+
+                  </div>
+
+                ))}
+
+              </div>
 
             </div>
+
           )}
 
         </div>
 
       </div>
 
- 
-      <div className="print:hidden mt-8">
-      
+      {/* =====================================================
+          FOOTER
+      ====================================================== */}
+
+      <div className="print:hidden mt-8 text-center text-xs text-gray-500">
+        Max Technology • Employee ID Printing System
       </div>
 
     </div>
