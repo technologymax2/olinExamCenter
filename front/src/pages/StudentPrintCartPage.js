@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import Footer from "./Footer";
 
 const API_BASE_URL = "https://max-tech-backend.onrender.com";
 const FRONTEND_URL = "https://max-technology-website.vercel.app";
@@ -1402,10 +1401,7 @@ function StudentPrintCartPage({ handleLogout }) {
 
       </div>
 
-      {/* ==================================================
-          FOOTER
-      ================================================== */}
-
+ 
       <div className="print:hidden mt-8">
       
       </div>
