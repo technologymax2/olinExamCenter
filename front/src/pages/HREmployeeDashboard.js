@@ -35,6 +35,55 @@ function HREmployeeDashboard() {
     'ebd592608f4dba1e8271bec8e920c408';
 
   // ==========================================
+  // AUTHENTICATION
+  // ==========================================
+
+  /*
+    IMPORTANT:
+    Your login stores the JWT as:
+
+    localStorage.setItem('token', ...)
+
+    Every protected HR API request must send:
+
+    Authorization: Bearer <token>
+  */
+
+  const getToken = () => {
+    return localStorage.getItem('token');
+  };
+
+  const getAuthHeaders = () => {
+    const token = getToken();
+
+    return {
+      'Content-Type': 'application/json',
+      ...(token
+        ? {
+            Authorization: `Bearer ${token}`
+          }
+        : {})
+    };
+  };
+
+  // ==========================================
+  // CHECK AUTHENTICATION
+  // ==========================================
+  const checkAuthentication = () => {
+    const token = getToken();
+
+    if (!token) {
+      setErrorMessage(
+        'የመግቢያ ፍቃድዎ የለም። እባክዎ እንደገና Login ያድርጉ።'
+      );
+
+      return false;
+    }
+
+    return true;
+  };
+
+  // ==========================================
   // INITIAL FORM
   // ==========================================
   const initialFormState = {
@@ -91,15 +140,50 @@ function HREmployeeDashboard() {
     try {
       setErrorMessage('');
 
+      const token = getToken();
+
+      if (!token) {
+        throw new Error(
+          'Authentication required. እባክዎ Login ያድርጉ።'
+        );
+      }
+
       const response = await fetch(
-        `${API_URL}/api/hr/students`
+        `${API_URL}/api/hr/students`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
       );
 
       const data = await response.json();
 
+      // ------------------------------------------
+      // AUTH ERROR
+      // ------------------------------------------
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+
+        throw new Error(
+          'የመግቢያ ፍቃድዎ ጊዜው አልፏል። እባክዎ Login እንደገና ያድርጉ።'
+        );
+      }
+
+      // ------------------------------------------
+      // FORBIDDEN
+      // ------------------------------------------
+      if (response.status === 403) {
+        throw new Error(
+          'ይህን የHR መረጃ ለማየት ፍቃድ የለዎትም።'
+        );
+      }
+
       if (!response.ok) {
         throw new Error(
           data.error ||
+            data.message ||
             'የተማሪዎችን መረጃ ማምጣት አልተቻለም!'
         );
       }
@@ -126,6 +210,9 @@ function HREmployeeDashboard() {
     }
   }, [API_URL]);
 
+  // ==========================================
+  // LOAD STUDENTS
+  // ==========================================
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
@@ -227,7 +314,7 @@ function HREmployeeDashboard() {
   };
 
   // ==========================================
-  // BULK UPDATE
+  // BULK UPDATE ACADEMIC YEAR
   // ==========================================
   const handleBulkUpdateAcademicYear =
     async () => {
@@ -235,6 +322,10 @@ function HREmployeeDashboard() {
         setErrorMessage(
           'እባክዎ መጀመሪያ ተማሪዎችን ይምረጡ!'
         );
+        return;
+      }
+
+      if (!checkAuthentication()) {
         return;
       }
 
@@ -249,9 +340,7 @@ function HREmployeeDashboard() {
               `${API_URL}/api/hr/students/${id}`,
               {
                 method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({
                   academicYear:
                     targetAcademicYear
@@ -261,9 +350,24 @@ function HREmployeeDashboard() {
 
             const data = await response.json();
 
+            if (response.status === 401) {
+              localStorage.removeItem('token');
+
+              throw new Error(
+                'የመግቢያ ፍቃድዎ ጊዜው አልፏል።'
+              );
+            }
+
+            if (response.status === 403) {
+              throw new Error(
+                'ይህን ተግባር ለመፈጸም ፍቃድ የለዎትም።'
+              );
+            }
+
             if (!response.ok) {
               throw new Error(
                 data.error ||
+                  data.message ||
                   'የተማሪውን መረጃ ማዘመን አልተቻለም!'
               );
             }
@@ -339,6 +443,10 @@ function HREmployeeDashboard() {
 
     if (!confirmed) return;
 
+    if (!checkAuthentication()) {
+      return;
+    }
+
     try {
       setLoading(true);
       setErrorMessage('');
@@ -347,15 +455,31 @@ function HREmployeeDashboard() {
       const response = await fetch(
         `${API_URL}/api/hr/students/${id}`,
         {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers: getAuthHeaders()
         }
       );
 
       const data = await response.json();
 
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+
+        throw new Error(
+          'የመግቢያ ፍቃድዎ ጊዜው አልፏል። እባክዎ Login እንደገና ያድርጉ።'
+        );
+      }
+
+      if (response.status === 403) {
+        throw new Error(
+          'ተማሪን ለመሰረዝ ፍቃድ የለዎትም።'
+        );
+      }
+
       if (!response.ok) {
         throw new Error(
           data.error ||
+            data.message ||
             'ተማሪውን መሰረዝ አልተቻለም!'
         );
       }
@@ -383,7 +507,8 @@ function HREmployeeDashboard() {
       }
 
       setStudentStatus(
-        'ተማሪው በተሳካ ሁኔታ ተሰርዟል!'
+        data.message ||
+          'ተማሪው በተሳካ ሁኔታ ተሰርዟል!'
       );
     } catch (error) {
       console.error(
@@ -408,6 +533,10 @@ function HREmployeeDashboard() {
 
     setErrorMessage('');
     setStudentStatus('');
+
+    if (!checkAuthentication()) {
+      return;
+    }
 
     const phoneRegex = /^(09|07)\d{8}$/;
 
@@ -493,31 +622,55 @@ function HREmployeeDashboard() {
 
       let response;
 
+      // ------------------------------------------
+      // UPDATE
+      // ------------------------------------------
       if (editingStudentId) {
         response = await fetch(
           `${API_URL}/api/hr/students/${editingStudentId}`,
           {
             method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json'
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify(studentData)
           }
         );
-      } else {
+      }
+
+      // ------------------------------------------
+      // CREATE
+      // ------------------------------------------
+      else {
         response = await fetch(
           `${API_URL}/api/hr/students`,
           {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify(studentData)
           }
         );
       }
 
       const data = await response.json();
+
+      // ------------------------------------------
+      // AUTH ERROR
+      // ------------------------------------------
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+
+        throw new Error(
+          'የመግቢያ ፍቃድዎ ጊዜው አልፏል። እባክዎ Login እንደገና ያድርጉ።'
+        );
+      }
+
+      // ------------------------------------------
+      // FORBIDDEN
+      // ------------------------------------------
+      if (response.status === 403) {
+        throw new Error(
+          'ይህን ተግባር ለመፈጸም የHR ፍቃድ ያስፈልጋል።'
+        );
+      }
 
       if (!response.ok) {
         throw new Error(
@@ -574,7 +727,7 @@ function HREmployeeDashboard() {
   };
 
   // ==========================================
-  // 🖨️ NEW PRINT PAGE
+  // PRINT ID CARD
   // ==========================================
   const handlePrintIdCard = () => {
     if (!selectedIdCard) {
@@ -866,8 +1019,6 @@ function HREmployeeDashboard() {
 
         <div class="cards">
 
-          <!-- FRONT -->
-
           <div class="card">
 
             <div class="card-header">
@@ -939,9 +1090,6 @@ function HREmployeeDashboard() {
             </div>
 
           </div>
-
-
-          <!-- BACK -->
 
           <div class="card">
 
@@ -1053,9 +1201,7 @@ function HREmployeeDashboard() {
 
       <div className="max-w-7xl mx-auto">
 
-        {/* ==========================================
-            HEADER
-        ========================================== */}
+        {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
 
           <div>
@@ -1079,7 +1225,6 @@ function HREmployeeDashboard() {
               🔄 አድስ
             </button>
 
-            {/* NEW PRINT ACCESS BUTTON */}
             {selectedIdCard && (
               <button
                 type="button"
@@ -1094,9 +1239,7 @@ function HREmployeeDashboard() {
 
         </div>
 
-        {/* ==========================================
-            MESSAGES
-        ========================================== */}
+        {/* MESSAGES */}
         {errorMessage && (
           <div className="mb-4 p-4 bg-red-600/25 border border-red-500 text-red-400 rounded-xl text-sm font-medium">
             ⚠️ {errorMessage}
@@ -1109,14 +1252,10 @@ function HREmployeeDashboard() {
           </div>
         )}
 
-        {/* ==========================================
-            MAIN GRID
-        ========================================== */}
+        {/* MAIN GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* ==========================================
-              STUDENT FORM
-          ========================================== */}
+          {/* STUDENT FORM */}
           <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-gray-800">
 
             <h3 className="text-xl font-bold mb-4 text-[#d4af37]">
@@ -1129,8 +1268,6 @@ function HREmployeeDashboard() {
               onSubmit={handleSubmit}
               className="space-y-3"
             >
-
-              {/* Names */}
 
               <input
                 type="text"
@@ -1151,8 +1288,6 @@ function HREmployeeDashboard() {
                 required
                 className="w-full p-3 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm"
               />
-
-              {/* Family Names */}
 
               <div className="grid grid-cols-3 gap-2">
 
@@ -1187,8 +1322,6 @@ function HREmployeeDashboard() {
                 />
 
               </div>
-
-              {/* Program */}
 
               <div className="grid grid-cols-2 gap-3">
 
@@ -1226,8 +1359,6 @@ function HREmployeeDashboard() {
                 />
 
               </div>
-
-              {/* Academic Year */}
 
               <div className="grid grid-cols-2 gap-3">
 
@@ -1268,8 +1399,6 @@ function HREmployeeDashboard() {
 
               </div>
 
-              {/* Gender */}
-
               <div className="grid grid-cols-2 gap-3">
 
                 <select
@@ -1293,8 +1422,6 @@ function HREmployeeDashboard() {
                 />
 
               </div>
-
-              {/* Birth */}
 
               <div className="grid grid-cols-2 gap-3">
 
@@ -1321,8 +1448,6 @@ function HREmployeeDashboard() {
 
               </div>
 
-              {/* ID + Phone */}
-
               <div className="grid grid-cols-2 gap-3">
 
                 <input
@@ -1346,8 +1471,6 @@ function HREmployeeDashboard() {
                 />
 
               </div>
-
-              {/* Guardian */}
 
               <div className="grid grid-cols-2 gap-3">
 
@@ -1373,8 +1496,6 @@ function HREmployeeDashboard() {
                 />
 
               </div>
-
-              {/* Address */}
 
               <div className="grid grid-cols-2 gap-3">
 
@@ -1421,8 +1542,6 @@ function HREmployeeDashboard() {
                 />
 
               </div>
-
-              {/* Dates */}
 
               <div className="grid grid-cols-2 gap-3">
 
@@ -1521,9 +1640,8 @@ function HREmployeeDashboard() {
             </form>
           </div>
 
-          {/* ==========================================
-              STUDENT LIST
-          ========================================== */}
+          {/* STUDENT LIST */}
+
           <div className="lg:col-span-2 bg-gray-900 p-6 rounded-2xl shadow-lg border border-gray-800 overflow-x-auto">
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
@@ -1551,18 +1669,23 @@ function HREmployeeDashboard() {
                     <option value="1ኛ ዓመት">
                       1ኛ ዓመት
                     </option>
+
                     <option value="2ኛ ዓመት">
                       2ኛ ዓመት
                     </option>
+
                     <option value="3ኛ ዓመት">
                       3ኛ ዓመት
                     </option>
+
                     <option value="4ኛ ዓመት">
                       4ኛ ዓመት
                     </option>
+
                     <option value="5ኛ ዓመት">
                       5ኛ ዓመት
                     </option>
+
                     <option value="ምርምር/Thesis">
                       ምርምር / Thesis
                     </option>
@@ -1720,8 +1843,6 @@ function HREmployeeDashboard() {
 
                         <div className="flex gap-2 flex-wrap">
 
-                          {/* ID CARD */}
-
                           <button
                             type="button"
                             onClick={() =>
@@ -1732,8 +1853,6 @@ function HREmployeeDashboard() {
                             🪪 መታወቂያ
                           </button>
 
-                          {/* EDIT */}
-
                           <button
                             type="button"
                             onClick={() =>
@@ -1743,8 +1862,6 @@ function HREmployeeDashboard() {
                           >
                             ✏️ አስተካክል
                           </button>
-
-                          {/* DELETE */}
 
                           <button
                             type="button"
@@ -1768,6 +1885,7 @@ function HREmployeeDashboard() {
 
                   {studentList.length === 0 && (
                     <tr>
+
                       <td
                         colSpan="6"
                         className="p-10 text-center text-gray-500"
@@ -1776,6 +1894,7 @@ function HREmployeeDashboard() {
                           ? '⏳ ተማሪዎች እየተጫኑ ነው...'
                           : 'ምንም የተመዘገበ ተማሪ የለም።'}
                       </td>
+
                     </tr>
                   )}
 
@@ -1790,15 +1909,12 @@ function HREmployeeDashboard() {
         </div>
       </div>
 
-      {/* ==========================================
-          ID CARD PREVIEW
-      ========================================== */}
+      {/* ID CARD PREVIEW */}
+
       {selectedIdCard && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
 
           <div className="flex flex-col items-center gap-6 relative">
-
-            {/* CLOSE */}
 
             <button
               type="button"
@@ -1931,8 +2047,6 @@ function HREmployeeDashboard() {
 
                 </div>
 
-                {/* QR */}
-
                 <div className="flex flex-col items-center bg-black/30 p-2 rounded-xl">
 
                   <img
@@ -1952,10 +2066,6 @@ function HREmployeeDashboard() {
               </div>
 
             </div>
-
-            {/* ==========================================
-                PRINT BUTTON
-            ========================================== */}
 
             <button
               type="button"
